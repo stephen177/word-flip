@@ -1,0 +1,2736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Word Flip</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:dark;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#0a0c14; --text:#eef0f7; --muted:#9aa1b8;
+  --glass:rgba(255,255,255,.07); --glass-hi:rgba(255,255,255,.13);
+  --edge:rgba(255,255,255,.16); --accent:#8fb4ff;
+  --ok:#2fd27a; --ok-bg:rgba(47,210,122,.22);
+  --bad:#ff5d6c; --bad-bg:rgba(255,93,108,.22);
+  --display:'Fraunces',Georgia,'Times New Roman',serif;
+  --ui:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*,*::before,*::after{box-sizing:inherit}
+body{
+  margin:0;min-height:100%;color:var(--text);font-family:var(--ui);
+  background:
+    radial-gradient(600px 420px at 12% 8%,rgba(92,120,255,.35),transparent 70%),
+    radial-gradient(560px 460px at 92% 28%,rgba(190,90,255,.26),transparent 70%),
+    radial-gradient(700px 520px at 50% 105%,rgba(30,190,200,.22),transparent 70%),
+    var(--bg);
+  background-attachment:fixed;
+}
+.glass{
+  background:var(--glass);
+  -webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);
+  border:1px solid var(--edge);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28),inset 0 -1px 0 rgba(255,255,255,.05),0 20px 50px rgba(0,0,0,.4);
+}
+main{max-width:640px;margin:0 auto;padding:20px 18px 40px;display:flex;flex-direction:column;gap:22px}
+header{display:flex;justify-content:space-between;align-items:center;font-size:.85rem;color:var(--muted)}
+header b{color:var(--text);font-weight:600}
+.pill{padding:7px 14px;border-radius:999px}
+
+.scene{perspective:1400px}
+.card{display:grid;transition:transform .8s cubic-bezier(.3,.9,.3,1);transform-style:preserve-3d;min-height:290px}
+.card.flipped{transform:rotateY(180deg)}
+.face{
+  grid-area:1/1;border-radius:28px;padding:28px 26px;
+  -webkit-backface-visibility:hidden;backface-visibility:hidden;
+  display:flex;flex-direction:column;justify-content:center;
+}
+.front{align-items:center;text-align:center;gap:14px}
+.back{transform:rotateY(180deg);gap:14px;background:var(--glass-hi)}
+.word{overflow-wrap:anywhere;font-family:var(--display);font-weight:500;font-size:clamp(2.8rem,12vw,5.2rem);line-height:1.05;margin:0;letter-spacing:-.01em}
+.meta{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:1.02rem}
+.meta em{font-family:var(--display);color:var(--text)}
+.reg{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;padding:3px 9px;border-radius:999px;background:var(--glass);border:1px solid var(--edge)}
+.mic{
+  width:38px;height:38px;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--accent);padding:0;
+  background:var(--glass-hi);border:1px solid var(--edge);transition:transform .15s,background .2s;
+}
+.mic:hover{background:rgba(255,255,255,.2)}.mic:active{transform:scale(.92)}
+.mic svg{width:18px;height:18px}
+.back h2{font-family:var(--display);font-size:1.7rem;font-weight:500;margin:0}
+.back h2 small{font-family:var(--ui);font-size:.9rem;color:var(--muted);font-weight:400;margin-left:8px}
+.senses{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:12px;font-size:1.02rem;line-height:1.5}
+.senses .n{color:var(--accent);font-weight:600;margin-right:6px}
+.senses .alt{margin-top:6px;padding-left:18px;position:relative;color:#d6daea}
+.senses .alt::before{content:"•";position:absolute;left:4px;color:var(--accent)}
+.senses i{color:var(--muted)}
+.senses .lead{font-style:italic;color:var(--accent)}
+
+.choices{display:flex;flex-direction:column;gap:12px}
+.choice{
+  text-align:left;font:inherit;color:inherit;font-size:1rem;line-height:1.45;cursor:pointer;
+  padding:16px 18px;border-radius:20px;transition:transform .15s,background .3s,border-color .3s,box-shadow .3s;
+  animation:rise .5s both;
+}
+.choice:nth-child(2){animation-delay:.07s}.choice:nth-child(3){animation-delay:.14s}
+.choice:not(:disabled):hover{transform:translateY(-2px);background:var(--glass-hi)}
+.choice:disabled{cursor:default}
+.choice.correct{background:var(--ok-bg);border-color:var(--ok);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 0 0 3px rgba(47,210,122,.25),0 0 30px rgba(47,210,122,.3);animation:pop .45s}
+.choice.wrong{background:var(--bad-bg);border-color:var(--bad);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 0 0 3px rgba(255,93,108,.22),0 0 30px rgba(255,93,108,.28);animation:shake .45s}
+.choice.dim{opacity:.55}
+.next{
+  align-self:center;font:inherit;font-weight:600;color:var(--text);cursor:pointer;padding:13px 28px;border-radius:999px;
+  opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .35s,transform .35s,background .2s;
+}
+.next.show{opacity:1;transform:none;pointer-events:auto}
+.next:hover{background:var(--glass-hi)}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.03)}100%{transform:scale(1)}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(3px)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01s!important}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="pill glass">Streak <b id="streak">0</b></span>
+    <span class="pill glass">Best <b id="best">0</b></span>
+  </header>
+  <div class="scene">
+    <div class="card" id="card">
+      <section class="face front glass" id="front"></section>
+      <section class="face back glass" id="back"></section>
+    </div>
+  </div>
+  <div class="choices" id="choices"></div>
+  <button class="next glass" id="next">Next word →</button>
+</main>
+
+<script>
+/* ---------- WORD LIST ----------
+Paste the full list between the backticks. Format per entry:
+word | pronunciation | part of speech
+definition: example
+• alternative definition: example      (card back only)
+Numbered lines (1. 2.) = separate senses; one is picked at random for the quiz. */
+const RAW = String.raw`
+abjure | əbˈdʒʊə | verb formal
+solemnly renounce (a belief, cause, or claim): MPs were urged to abjure their Jacobite allegiance.
+
+ablate | əˈbleɪt | verb
+2. gradually remove material from or erode (a surface or object) by melting, evaporation, frictional action, etc., or erode (material) in this way: drying winds slowly ablate away the ice | the laser beam can ablate solid rock from seven metres away.
+
+abrade | əˈbreɪd | verb
+scrape or wear away by friction or erosion: it was a landscape slowly abraded by a fine, stinging dust.
+
+abscond | əbˈskɒnd | verb
+leave hurriedly and secretly, typically to escape from custody or avoid arrest: the barman absconded with a week's takings.
+
+abstemious | əbˈstiːmɪəs | adjective
+indulging only very moderately in something, especially food and drink: ‘We only had a bottle.’ ‘Very abstemious of you.’.
+
+abstruse | əbˈstruːs | adjective
+difficult to understand; obscure: an abstruse philosophical inquiry.
+
+abut | əˈbʌt | verb
+(of a building or an area of land) be next to or have a common boundary with: gardens abutting Great Prescott Street.
+• touch or lean on: masonry may crumble where a roof abuts it.
+
+accede | əkˈsiːd | verb formal
+1. agree to a demand, request, or treaty: the authorities did not accede to the strikers' demands | I found myself with little choice but to accede.
+
+accrete | əˈkriːt | verb
+grow by accumulation or coalescence: ice that had accreted grotesquely into stalactites.
+
+acolyte | ˈakəlʌɪt | noun
+a person assisting a priest in a religious service or procession.
+• an assistant or follower: she runs the department through a small group of acolytes.
+
+acquisitive | əˈkwɪzɪtɪv | adjective
+excessively interested in acquiring money or material things: we live in a competitive and acquisitive society.
+
+acrostic | əˈkrɒstɪk | noun
+a poem, word puzzle, or other composition in which certain letters in each line form a word or words.
+
+ad hominem | ˌad ˈhɒmɪnɛm | adjective
+(of an argument or reaction) directed against a person rather than the position they are maintaining: an ad hominem response.
+
+adjunct | ˈadʒʌŋ(k)t | noun
+1. a thing added to something else as a supplementary rather than an essential part: computer technology is an adjunct to learning.
+• a person who is another's assistant or subordinate: a talented adjunct desperately grabbing at officer status.
+
+admixture | ədˈmɪkstʃə | noun
+a mixture: he felt that his work was an admixture of aggression and creativity.
+
+adobe | əˈdəʊbi | noun
+a kind of clay used as a building material: adobe houses.
+
+adroit | əˈdrɔɪt | adjective
+clever or skilful: he was adroit at tax avoidance.
+
+adumbrate | ˈadʌmbreɪt | verb formal
+1. represent in outline: Hobhouse had already adumbrated the idea of a welfare state.
+• indicate faintly: the walls were only adumbrated by the meagre light.
+
+adze | adz | noun
+a tool similar to an axe, with an arched blade at right angles to the handle, used for cutting or shaping large pieces of wood.
+
+aegis | ˈiːdʒɪs | noun
+1. the protection, backing, or support of a particular person or organization: the negotiations were conducted under the aegis of the UN | under his aegis, the gulf between rich and poor became wider.
+
+aetiology | ˌiːtɪˈɒlədʒi | noun
+1. Medicine the cause, set of causes, or manner of causation of a disease or condition
+
+agglomeration | əˌɡlɒməˈreɪʃn | noun
+a mass or collection of things; an assemblage: the arts centre is an agglomeration of theatres, galleries, shops, restaurants and bars.
+
+agitprop | ˈadʒɪtprɒp | noun
+political (originally communist) propaganda, especially in art or literature: a typeface which made it resemble student agitprop of the Eighties.
+
+alacrity | əˈlakrɪti | noun
+brisk and cheerful readiness: she accepted the invitation with alacrity.
+
+allegory | ˈalɪɡ(ə)ri | noun
+a story, poem, or picture that can be interpreted to reveal a hidden meaning, typically a moral or political one: Pilgrim's Progress is an allegory of the spiritual journey.
+
+alms | ɑːmz | plural noun
+(in historical contexts) money or food given to poor people: the riders stopped to distribute alms.
+
+amanuensis | əˌmanjʊˈɛnsɪs | noun
+a literary or artistic assistant, in particular one who takes dictation or copies manuscripts.
+
+ambit | ˈambɪt | noun
+the scope, extent, or bounds of something: a full discussion of this complex issue was beyond the ambit of one book.
+
+ambulatory | ˈambjʊlət(ə)ri | adjective
+relating to or adapted for walking: continuous ambulatory dialysis.
+
+amortise | əˈmɔːtʌɪz | verb
+gradually write off the initial cost of (an asset) over a period: the vessel's owners could not amortise her high capital costs.
+
+anachronism | əˈnakrənɪz(ə)m | noun
+a thing belonging or appropriate to a period other than that in which it exists, especially a thing that is conspicuously old-fashioned: the town is a throwback to medieval times, an anachronism that has survived the passing years.
+
+anhedonia | ˌanhɪˈdəʊnɪə | noun Psychiatry
+inability to feel pleasure in activities that are usually considered to be pleasurable.
+
+animadvert | ˌanɪmadˈvəːt | verb formal
+pass criticism or censure on; speak out against: we shall be obliged to animadvert most severely upon you in our report.
+
+anodyne | ˈanədʌɪn | adjective
+not likely to cause offence or disagreement and somewhat dull: anodyne music.
+
+anomie | ˈanəmi | noun
+lack of the usual social or ethical standards in an individual or group: the theory that high-rise architecture leads to anomie in the residents.
+
+antecedent | ˌantɪˈsiːd(ə)nt | noun
+1. a thing that existed before or logically precedes another
+
+antediluvian | ˌantɪdɪˈluːvɪən | adjective
+of or belonging to the time before the biblical Flood: gigantic bones of antediluvian animals.
+
+antipathetic | ˌantɪpəˈθɛtɪk | adjective
+showing or feeling a strong aversion: it is human nature to be antipathetic to change.
+
+antipodal | anˈtɪpədl | adjective
+relating to or situated on the opposite side of the earth.
+
+apace | əˈpeɪs | adverb
+1. literary swiftly; quickly: the vaccine rollout continues apace.
+
+apotheosis | əˌpɒθɪˈəʊsɪs | noun
+1. the highest point in the development of something; a culmination or climax: his appearance as Hamlet was the apotheosis of his career.
+
+apparatchik | ˌapəˈra(t)tʃɪk | noun
+mainly historical a member of a Communist Party apparat: old apparatchiks have given way to the Russian government's young reformers.
+• derogatory an official in a large political organization: Tory apparatchiks.
+
+appliqué | əˈpliːkeɪ | noun
+ornamental needlework in which pieces of fabric are sewn or stuck on to a larger piece to form a picture or pattern: appliqué table linen.
+
+apposite | ˈapəzɪt | adjective
+apt in the circumstances or in relation to something: an apposite quotation.
+
+approbation | ˌaprə(ʊ)ˈbeɪʃn | noun formal
+approval or praise: a term of approbation.
+
+apricity | aˈprɪsɪti | noun rare
+the warmth of the sun in winter: Thursday dawned with grudging apricity.
+
+aquiline | ˈakwɪlʌɪn | adjective
+1. (of a person's nose) hooked or curved like an eagle's beak: with bold features and an aquiline nose he could be mistaken for a Roman bust.
+
+arbitrage | ˈɑːbɪtrɑːʒ | noun Economics
+the simultaneous buying and selling of securities, currency, or commodities in different markets or in derivative forms in order to take advantage of differing prices for the same asset: [as modifier] : profitable arbitrage opportunities.
+
+arcane | ɑːˈkeɪn | adjective
+understood by few; mysterious or secret: arcane procedures for electing people.
+
+arch2 | ɑːtʃ | adjective
+deliberately or affectedly playful and teasing: a somewhat arch tone of voice.
+
+ardent | ˈɑːdnt | adjective
+1. very enthusiastic or passionate: an ardent supporter of the cause of education.
+2. archaic or literary burning; glowing: the ardent flames.
+
+armamentarium | ˌɑːməmɛnˈtɛːrɪəm | noun
+the medicines, equipment, and techniques available to a medical practitioner: the leeches of the medieval armamentarium are making a comeback in modern medicine.
+
+arrogate | ˈarəɡeɪt | verb
+take or claim (something) without justification: they arrogate to themselves the ability to divine the nation's true interests.
+
+askance | əˈskans | adverb
+with an attitude or look of suspicion or disapproval: the reformers looked askance at the mystical tradition | a waiter looked askance at his jeans.
+
+asperity | əˈspɛrɪti | noun
+harshness of tone or manner: he pointed this out with some asperity.
+
+aspidistra | ˌaspɪˈdɪstrə | noun
+a bulbous plant of the lily family with broad tapering leaves, native to eastern Asia and widely grown as a houseplant.
+
+aspirate | ˈaspɪreɪt | verb 
+Medicine breathe (something) in; inhale: some drowning victims don't aspirate any water.
+• draw (fluid) by suction from a vessel or cavity: bile was aspirated through a catheter.
+
+assay | əˈseɪ, ˈaseɪ | noun
+the testing of a metal or ore to determine its ingredients and quality: submission of plate for assay.
+
+assignation | ˌasɪɡˈneɪʃn | noun
+1. an appointment to meet someone in secret, typically one made by lovers: his assignation with an older woman.
+
+atavistic | ˌatəˈvɪstɪk | adjective
+relating to or characterized by reversion to something ancient or ancestral: atavistic fears and instincts.
+
+atelier | əˈtɛlieɪ | noun
+a workshop or studio, especially one used by an artist or designer.
+
+athwart | əˈθwɔːt | preposition
+1. from side to side of; across: a counter was placed athwart the entrance.
+2. in opposition to; counter to: these statistics run sharply athwart conventional presumptions.
+
+atoll | ˈatɒl | noun
+a ring-shaped reef, island, or chain of islands formed of coral.
+
+attestation | ˌatɛˈsteɪʃn | noun
+1. evidence or proof of something: their vocabulary is no attestation to your value as a parent.
+
+augury | ˈɔːɡjʊri | noun
+a sign of what will happen in the future; an omen: they heard the sound as an augury of death.
+
+autarky | ˈɔːtɑːki | noun
+economic independence or self-sufficiency: rural community autarchy is a Utopian dream.
+
+avaricious | ˌavəˈrɪʃəs | adjective
+having or showing an extreme greed for wealth or material gain: avaricious corporate bosses looking to maximize profits.
+
+avidity | əˈvɪdɪti | noun
+1. keen interest or enthusiasm: he read detective stories with avidity.
+
+avuncular | əˈvʌŋkjʊlə | adjective
+1. kind and friendly towards a younger or less experienced person: he was avuncular, reassuring, and trustworthy.
+
+bacchanalian | ˌbakəˈneɪlɪən | adjective
+characterized by or given to drunken revelry: a bacchanalian orgy.
+
+bale1 | beɪl | noun
+a large wrapped or bound bundle of paper, hay, or cotton: the fire destroyed 500 bales of hay.
+
+baleful | ˈbeɪlf(ʊ)l | adjective
+threatening harm; menacing: Bill shot a baleful glance in her direction.
+
+Balkanise | verb
+divide (a region or body) into smaller mutually hostile states or groups: ambitious neighbours would snatch pieces of territory, Balkanizing the country.
+
+barrow1 | ˈbarəʊ | noun British English
+a two-wheeled handcart used especially by street vendors: they sell fruit from market barrows.
+• a wheelbarrow.
+
+bastion | ˈbastɪən | noun
+2. an institution, place, or person strongly maintaining particular principles, attitudes, or activities: cricket's last bastion of discrimination.
+
+baulky | ˈbɔːki | adjective
+awkward; uncooperative: he was trying to get his balky horse to move.
+
+beachhead | ˈbiːtʃhɛd | noun
+a defended position on a beach taken from the enemy by landing forces, from which an attack can be launched.
+
+beatific | ˌbɪəˈtɪfɪk | adjective
+1. feeling or expressing blissful happiness: a beatific smile.
+
+bellicose | ˈbɛlɪkəʊs | adjective
+demonstrating aggression and willingness to fight: a mood of bellicose jingoism.
+
+bellwether | ˈbɛlˌwɛðə | noun
+the leading sheep of a flock, with a bell on its neck.
+• something that leads or indicates a trend: Basildon is now the bellwether of Britain's voting behaviour.
+
+benediction | ˌbɛnɪˈdɪkʃn | noun
+the utterance of a blessing, especially at the end of a religious service: he said the benediction.
+
+beneficent | bɪˈnɛfɪs(ə)nt | adjective
+(of a person) generous or doing good: a beneficent landowner.
+
+bilge | bɪldʒ | noun
+1. the area on the outer surface of a ship's hull where the bottom curves to meet the vertical sides.
+2. informal nonsense; rubbish: what has been written is nothing but bilge.
+
+bilious | ˈbɪlɪəs | adjective
+2. spiteful; bad-tempered: his bilious temperament.
+
+bilk | bɪlk | verb
+1. informal obtain or withhold money from (someone) unfairly or by deceit; cheat or defraud: an apparently benevolent elderly gentleman bilked me of twenty dollars.
+
+blithe | blʌɪð | adjective
+showing a casual and cheerful indifference considered to be callous or improper: a blithe disregard for the rules of the road.
+
+bloviate | ˈbləʊvɪeɪt | verb US informal
+talk at length, especially in an inflated or empty way: when so many people are bloviating, it's easy to dismiss all discourse as chatter
+
+bole1 | bəʊl | noun
+the trunk of a tree.
+
+bonhomie | ˈbɒnəmiː | noun
+cheerful friendliness; geniality: he exuded good humour and bonhomie.
+
+boondoggle | ˈbuːnˌdɒɡl | noun North American English informal
+an unnecessary, wasteful, or fraudulent project: he characterized the defense program as an unworkable boondoggle.
+
+boor | bʊə | noun
+a rough and bad-mannered person: at last the big obnoxious boor had been dealt a stunning blow for his uncouth and belligerent manner.
+
+bootstrap | ˈbuːtstrap | verb
+1. get (oneself or something) into or out of a situation using existing resources: the company is bootstrapping itself out of a marred financial past.
+• start up (an internet-based business or other enterprise) with minimal financial resources.
+
+braggadocio | ˌbraɡəˈdəʊtʃɪəʊ | noun
+boastful or arrogant behaviour: they were brash and full of braggadocio | the music is all about braggadocio and proving that you're lyrically ahead of the rest.
+
+bravura | brəˈvjʊərə | noun
+great technical skill and brilliance shown in a performance or activity: the recital ended with a blazing display of bravura.
+• the display of great daring: the show of bravura hid a guilty timidity.
+
+brazen | ˈbreɪzn | adjective
+1. bold and without shame: he went about his illegal business with a brazen assurance | a brazen hussy.
+
+bricolage | ˌbrɪkə(ʊ)ˈlɑːʒ | noun
+(in art or literature) construction or creation from a diverse range of available things: the chaotic bricolage of the novel is brought together in a unifying gesture. 
+
+brindle | ˈbrɪndl | noun
+a brownish or tawny colour of animal fur, with streaks of other colour: coat colours included red, brindle, and yellowish cream.
+
+brinkmanship | ˈbrɪŋkmənʃɪp | noun
+the art or practice of pursuing a dangerous policy to the limits of safety before stopping, especially in politics: in any game of brinkmanship, it is possible that one side will collapse suddenly.
+
+brocade | brəˈkeɪd | noun
+a rich fabric woven with a raised pattern, typically with gold or silver thread: the quilt was of white silk brocade | a heavy brocade curtain.
+
+brook 2 | brʊk | verb formal
+tolerate or allow (something, typically dissent or opposition): Jenny would brook no criticism of Matthew.
+
+browbeat | ˈbraʊbiːt | verb
+intimidate (someone), typically into doing something, with stern or abusive words: a witness is being browbeaten under cross-examination.
+
+bucolic | bjuːˈkɒlɪk | adjective
+relating to the pleasant aspects of the countryside and country life: the church is lovely for its bucolic setting.
+
+bulwark | ˈbʊlwək | noun
+1. a defensive wall.
+• a person or thing that acts as a defence: the security forces are a bulwark against the breakdown of society.
+
+bupkis | ˈbʌpkɪs | pronoun US English informal
+nothing at all: you know bupkis about fundraising.
+
+burbling | ˈbəːb(ə)lɪŋ | adjective
+making a continuous murmuring noise: green fields and gently burbling streams | endless burbling baby noises.
+
+burin | ˈbjʊərɪn | noun
+a handheld steel tool used for engraving in metal or wood.
+
+burnish | ˈbəːnɪʃ | verb
+polish (something, especially metal) by rubbing: to burnish copper, I would probably use a drill with a pad attached to the end.
+• enhance or perfect (something such as a reputation or a skill): a man who took advantage of any opportunity to burnish his image.
+
+burr | bəː | noun
+a whirring sound, such as a phone ringing tone or the sound of cogs turning.
+
+bursar | ˈbəːsə | noun
+1. mainly British English a person who manages the financial affairs of a college or school: the university has reminded students who have not completed payment to contact their college bursars.
+
+buttress | ˈbʌtrɪs | noun
+1. a structure of stone or brick built against a wall to strengthen or support it: the cathedral's massive buttresses.
+2. a source of defence or support: she clung to her shrinking faith as a buttress against despair.
+
+byway | ˈbʌɪweɪ | noun
+a road or track not following a main route; a minor road or path: the highways and byways of Dorset.
+• a little-known area of knowledge: the arcane byways of the laws of privilege.
+
+cabal | kəˈbal | noun
+a secret political clique or faction: a cabal of dissidents.
+
+cadre | ˈkɑːdə | noun
+1. a small group of people specially trained for a particular purpose or profession: a cadre of professional managers.
+
+caldera | kɒlˈdɛːrə | noun
+a large volcanic crater, especially one formed by a major eruption leading to the collapse of the mouth of the volcano.
+
+callow | ˈkaləʊ | adjective
+(of a young person) inexperienced and immature: earnest and callow undergraduates.
+
+canard | kəˈnɑːd | noun
+1. an unfounded rumour or story: the old canard that LA is a cultural wasteland.
+2. a small winglike projection attached to an aircraft forward of the main wing to provide extra stability or control, sometimes replacing the tail.
+
+cannula | ˈkanjʊlə | noun Surgery
+a thin tube inserted into a vein or body cavity to administer medication, drain off fluid, or insert a surgical instrument.
+
+cant | kant | noun
+1. hypocritical and sanctimonious talk, typically of a moral, religious, or political nature: he had no time for the cant of the priests about sin.
+
+capercaillie | ˌkapəˈkeɪli | noun
+a large Eurasian grouse of mature pine forests.
+
+capstone | ˈkapstəʊn | noun
+a stone fixed on top of something, typically a wall.
+
+carouse | kəˈraʊz | verb
+drink alcohol and enjoy oneself with others in a noisy, lively way: they danced and caroused until the drink ran out.
+
+carrel | ˈkarəl | noun
+a small cubicle with a desk for the use of a reader or student in a library.
+• historical a small enclosure or study in a cloister.
+
+catkin | ˈkatkɪn | noun
+a downy, hanging flowering spike of trees such as willow and hazel, pollinated by the wind.
+
+cavil | ˈkavəl | verb
+make petty or unnecessary objections: they cavilled at the cost.
+
+censorious | sɛnˈsɔːrɪəs | adjective
+severely critical of others: censorious champions of morality.
+
+chanteuse | ʃɑːnˈtəːz | noun
+a female singer of popular songs: the jazz chanteuse has just released her third album.
+
+chicanery | ʃɪˈkeɪn(ə)ri | noun
+the use of deception or subterfuge to achieve one's purpose: storylines packed with political chicanery.
+
+chit1 | tʃɪt | noun
+a short official note, typically recording a sum owed: write out a chit for whatever you take from the drinks cupboard.
+
+circumspect | ˈsəːkəmspɛkt | adjective
+wary and unwilling to take risks: the officials were very circumspect in their statements.
+
+cislunar | ˌsɪsˈl(j)uːnə | adjective
+between the earth and the moon: the darkness of cislunar space.
+
+clamour | ˈklamə | noun
+a loud and confused noise, especially that of people shouting: the questions rose to a clamour.
+
+clarion | ˈklarɪən | noun historical
+a shrill narrow-tubed war trumpet.
+
+clemency | ˈklɛm(ə)nsi | noun
+mercy; lenience: an appeal for clemency.
+
+cleric | ˈklɛrɪk | noun
+a priest or religious leader, especially a Christian or Muslim one: the cleric said that the church was doing many charitable works.
+
+clew | kluː | noun
+1. the lower or after corner of a sail.
+
+cogent | ˈkəʊdʒ(ə)nt | adjective
+(of an argument or case) clear, logical, and convincing: they put forward cogent arguments for British membership.
+
+cognoscenti | ˌkɒɡnəˈʃɛntɪ(ː) | plural noun
+people who are especially well informed about a particular subject: it's worth taking a tip from the fashion cognoscenti.
+
+colloquium | kəˈləʊkwɪəm | noun
+an academic conference or seminar: the colloquium offers a two-week intellectual feast on key IP topics.
+
+comestible | kəˈmɛstɪbl | noun formal, or humorous
+an item of food: a fridge groaning with comestibles.
+
+comity | ˈkɒmɪti | noun formal
+1. an association of nations for their mutual benefit.
+
+compunction | kəmˈpʌŋ(k)ʃn | noun
+a feeling of guilt or moral scruple that prevents or follows the doing of something bad: they used their tanks without compunction. 
+
+conclave | ˈkɒŋkleɪv | noun
+a private meeting.
+• (in the Roman Catholic Church) the assembly of cardinals for the election of a pope.
+
+concomitant | kənˈkɒmɪt(ə)nt | adjective formal
+naturally accompanying or associated: she loved travel, with all its concomitant worries.
+
+confab | kənˈfab | noun informal
+an informal private conversation or discussion: the men clustered together for a quick confab.
+
+confect | kənˈfɛkt | verb
+make (something elaborate or dainty) from various elements: a trifle confected from angelica and piped cream.
+
+conflagration | ˌkɒnfləˈɡreɪʃn | noun
+an extensive fire which destroys a great deal of land or property: tinder-dry conditions sparked fears of a conflagration in many drought-devastated communities.
+
+congenital | kənˈdʒɛnɪtl | adjective
+(of a disease or physical abnormality) present from birth: a congenital malformation of the heart.
+• (of a person) having a particular trait from birth or by firmly established habit: a congenital liar.
+
+contemporaneous | kənˌtɛmpəˈreɪnɪəs | adjective
+existing at or occurring in the same period of time: Pythagoras was contemporaneous with Buddha.
+
+contretemps | ˈkɒntrətɒ̃ | noun
+a minor dispute or disagreement: she had occasional contretemps with her staff.
+
+copacetic | ˌkəʊpəˈsɛtɪk | adjective
+in excellent order: he said to tell you everything is copacetic.
+
+cornerstone | ˈkɔːnəstəʊn | noun
+1. an important quality or feature on which a particular thing depends or is based: a national minimum wage remained the cornerstone of policy.
+
+cornice | ˈkɔːnɪs | noun
+1. an ornamental moulding round the wall of a room just below the ceiling.
+
+corporeal | kɔːˈpɔːrɪəl | adjective
+relating to a person's body, especially as opposed to their spirit: he was frank about his corporeal appetites.
+
+corpulent | ˈkɔːpjʊlənt | adjective
+(of a person) fat: a short, somewhat corpulent man.
+
+corral | kəˈrɑːl | verb
+1. gather together and confine (a group of people or things): the organizers were corralling the crowd into marching formation.
+
+coruscating | ˈkɒrəskeɪtɪŋ | adjective
+1. flashing; sparkling: a coruscating kaleidoscope of colours.
+• brilliant or striking in content or style: the play's coruscating wit.
+2. severely critical; scathing: his coruscating attack on the Prime Minister.
+
+cosset | ˈkɒsɪt | verb
+care for and protect in an overindulgent way: all her life she'd been cosseted by her family.
+
+counterfactual | ˌkaʊntəˈfaktʃʊəl | adjective Philosophy
+relating to or expressing what has not happened or is not the case: we produced a counterfactual trend estimating what might have happened in similar circumstances.
+
+countermand | ˈkaʊntəmɑːnd | verb
+revoke or cancel (an order): an order to arrest the strike leaders had been countermanded.
+
+couture | kʊˈtjʊə | noun
+the design and manufacture of fashionable clothes to a client's specific requirements and measurements: designer ready-to-wear has taken over from couture as the focus of interest.
+
+covenant | ˈkʌvənənt | noun
+an agreement: there was a covenant between them that her name was never to be mentioned.
+
+credo | ˈkriːdəʊ | noun
+a statement of the beliefs or aims which guide someone's actions: he announced his credo in his first editorial.
+
+Creole | ˈkriːəʊl | noun
+2. a mother tongue formed from the contact of a European language (especially English, French, Spanish, or Portuguese) with local languages (especially African languages spoken by slaves in the West Indies): a Portuguese-based Creole.
+
+crenellate | ˈkrɛn(ə)leɪt | verb mainly historical
+provide (a wall of a building) with battlements: the abbey of Quarr had been licensed to crenellate its buildings.
+
+crepuscular | krɪˈpʌskjʊlə | adjective
+resembling or relating to twilight: a kind of crepuscular glow | the drama unfolds in a crepuscular gloom.
+
+cri de cœur | ˌkriː də ˈkəː | noun
+a passionate appeal, complaint, or protest: a patriotic cri de coeur.
+
+cromulent | ˈkrɒmjʊlənt | adjective humorous
+acceptable or adequate: the continental breakfast was perfectly cromulent.
+
+cubit | ˈkjuːbɪt | noun
+an ancient measure of length, approximately equal to the length of a forearm. It was typically about 18 inches or 44 cm, though there was a long cubit of about 21 inches or 52 cm.
+
+curlicue | ˈkəːlɪkjuː | noun
+a decorative curl or twist in calligraphy or in the design of an object: the wide bridge was decorated with gilded wrought-iron curlicues.
+
+daub | dɔːb | verb
+carelessly coat or smear (a surface) with a thick or sticky substance: the walls were daubed with splashes of paint.
+
+de minimis | ˌdeɪ ˈmɪnɪmiːs | adjective
+too trivial or minor to merit consideration, especially in law: de minimis fringe benefit rules.
+
+declaim | dɪˈkleɪm | verb
+utter or deliver words in a rhetorical or impassioned way, as if to an audience: an opportunity to declaim against the evils of society.
+
+declension | dɪˈklɛnʃn | noun
+1. (in the grammar of Latin, Greek, and certain other languages) the variation of the form of a noun, pronoun, or adjective, by which its grammatical case, number, and gender are identified.
+
+decorous | ˈdɛk(ə)rəs | adjective
+in keeping with good taste and propriety; polite and restrained: Charlotte gave David a decorous kiss.
+
+defenestrate | diːˈfɛnɪstreɪt | verb
+2. remove or dismiss (someone) from a position of power or authority: the overwhelming view is that he should be defenestrated before the next election.
+
+degust | dɪˈɡʌst | verb rare
+taste (something) carefully to appreciate it fully: Dennis didn't drink it, he degusted it.
+
+dell | dɛl | noun literary
+a small valley, usually among trees: lush green valleys and wooded dells.
+
+demarcate | ˈdiːmɑːkeɪt | verb
+set the boundaries or limits of: plots of land demarcated by barbed wire.
+• separate or distinguish from: art was being demarcated from the more objective science.
+
+demi-monde | ˌdɛmɪˈmɒnd | noun
+(in 19th-century France) a class of women considered to be of doubtful social standing and morality.
+• a group of people on the fringes of respectable society: the demi-monde of arms deals.
+
+denizen | ˈdɛnɪz(ə)n | noun
+1. a person, animal, or plant that lives or is found in a particular place: denizens of field and forest.
+
+denude | dɪˈnjuːd | verb
+strip (something) of its covering, possessions, or assets: almost overnight the Arctic was denuded of animals.
+
+deontic | dɪˈɒntɪk | adjective
+Philosophy relating to duty and obligation as ethical concepts.
+
+deracinate | dɪˈrasɪneɪt | verb
+uproot (someone) from their natural geographical, social, or cultural environment: a predatory mining company that threatens to devour the land and deracinate the locals.
+
+desiderate | dɪˈzɪdəreɪt | verb archaic
+feel a keen desire for (something lacking or absent): I desiderate the resources of a family.
+
+détente | deɪˈtɑːnt | noun
+the easing of hostility or strained relations, especially between countries: his policy of arms control and detente with the Soviet Union.
+
+deus ex machina | ˌdeɪʊs ɛks ˈmakɪnə | noun
+an unexpected power or event saving a seemingly hopeless situation, especially as a contrived plot device in a play or novel: there's always some deus ex machina that gets every character off the hook.
+
+diacritic | ˌdʌɪəˈkrɪtɪk | noun
+a sign, such as an accent or cedilla, which when written above or below a letter indicates a difference in pronunciation from the same letter when unmarked or differently marked.
+
+diaeresis | dʌɪˈɪərɪsɪs | noun
+1. a mark (¨) placed over a vowel to indicate that it is sounded separately, as in naïve, Brontë.
+
+Dianetics | ˌdʌɪəˈnɛtɪks | noun
+a system developed by the founder of the Church of Scientology, L. Ron Hubbard, which aims to relieve disorders by cleansing the mind of harmful mental images.
+
+diaphanous | dʌɪˈafənəs | adjective
+(especially of fabric) light, delicate, and translucent: a diaphanous dress of pale gold.
+
+diaeresis | dʌɪˈɪərɪsɪs | noun
+1. a mark (¨) placed over a vowel to indicate that it is sounded separately, as in naïve, Brontë.
+• the division of a sound into two syllables, especially by sounding a diphthong as two vowels.
+
+diaspora | dʌɪˈasp(ə)rə | noun
+the dispersion or spread of a people from their original homeland: the diaspora of boat people from Asia | his parents were part of the Scots diaspora.
+
+didactic | dʌɪˈdaktɪk | adjective
+intended to teach, particularly in having moral instruction as an ulterior motive: a didactic novel that set out to expose social injustice.
+
+diegetic | ˌdʌɪɪˈdʒɛtɪk | adjective
+(of sound in a film, television programme, etc.) occurring within the context of the story and able to be heard by the characters: the music used is strictly diegetic.
+
+diffident | ˈdɪfɪd(ə)ns | noun
+modesty or shyness resulting from a lack of self-confidence: I say this with some diffidence.
+
+dilettante | ˌdɪlɪˈtanti | noun
+a person who cultivates an area of interest, such as the arts, without real commitment or knowledge: a wealthy literary dilettante.
+
+diminuendo | dɪˌmɪnjʊˈɛndəʊ | noun Music
+a decrease in loudness in a piece of music: the sudden diminuendos are brilliantly effective.
+
+diminution | ˌdɪmɪˈnjuːʃn | noun
+a reduction in the size, extent, or importance of something: a permanent diminution in value.
+
+diphthong | ˈdɪfθɒŋ | noun
+a sound formed by the combination of two vowels in a single syllable, in which the sound begins as one vowel and moves towards another (as in coin, loud, and side): these are the most common type of diphthong among the languages of the world.
+
+disabuse | ˌdɪsəˈbjuːz | verb
+persuade (someone) that an idea or belief is mistaken: he quickly disabused me of my fanciful notions.
+
+disapprobation | ˌdɪsaprəˈbeɪʃn | noun
+strong disapproval, typically on moral grounds: she braved her mother's disapprobation and slipped out to enjoy herself.
+
+discompose | ˌdɪskəmˈpəʊz | verb
+disturb or agitate (someone): nothing could discompose her.
+
+disinter | ˌdɪs(ɪ)nˈtəː | verb
+dig up (something that has been buried, especially a corpse): his corpse was disinterred and dumped in a pit.
+• discover (something that is well hidden): he has disinterred an important collection of writings.
+
+dissociation | dɪˌsəʊʃɪˈeɪʃn | noun
+the action of disconnecting or separating or the state of being disconnected: we in the West honour a long-standing dissociation between church and state.
+
+docent | ˈdəʊs(ə)nt | noun 
+2. a person who acts as a guide, typically on a voluntary basis, in a museum, art gallery, or zoo.
+
+doleful | ˈdəʊlf(ʊ)l | adjective
+expressing sorrow; mournful: a doleful look.
+
+dorsal | ˈdɔːsl | adjective
+on or relating to the upper side or back of an animal, plant, or organ: a dorsal view of the body. Compare with ventral.
+
+dosshouse | ˈdɒshaʊs | noun British English informal
+a cheap lodging house for homeless people and tramps.
+
+dotage | ˈdəʊtɪdʒ | noun
+the period of life in which a person is old and weak: you could live here and look after me in my dotage.
+
+double bind | dʌbl ˈbʌɪnd | noun
+a situation in which a person is confronted with two irreconcilable demands or a choice between two undesirable courses of action: students are caught in a double bind between unemployment and cuts in education.
+
+dovish | ˈdʌvɪʃ | adjective
+advocating peaceful or conciliatory policies, especially in foreign affairs: a group of influential young dovish advisors.
+
+dowel | ˈdaʊ(ə)l | noun
+a projecting peg used for holding together components of a structure.
+
+druther | ˈdrʌðə | noun North American English informal
+one's preference in a matter: if I had my druthers, I would prefer to be a writer.
+
+dudgeon | ˈdʌdʒ(ə)n | noun
+a feeling of offence or deep resentment: the manager walked out in high dudgeon.
+
+dun1 | dʌn | adjective
+of a dull greyish-brown colour: a dun cow.
+• literary dark or dusky: when the dun evening comes.
+
+dysphemism | ˈdɪsfɪmɪz(ə)m | noun
+a derogatory or unpleasant term used instead of a pleasant or neutral one. The opposite of euphemism.
+
+ebullient | ɪˈbʌljənt | adjective
+1. cheerful and full of energy: she sounded ebullient and happy.
+
+ecclesiastical | ɪˌkliːzɪˈastɪkl | adjective
+relating to the Christian Church or its clergy: the ecclesiastical hierarchy.
+
+ecdysis | ˈɛkdɪsɪs | noun Zoology
+the process of shedding the old skin (in reptiles) or casting off the outer cuticle (in insects and other arthropods).
+
+ecumenical | ˌiːkjʊˈmɛnɪkl | adjective
+representing a number of different Christian Churches: he was a member of ecumenical committees.
+
+edgelord | ˈɛdʒlɔːd | noun informal
+a person who affects a provocative or extreme persona, especially online (typically used of a man): edgelords act like contrarians in the hope that everyone will admire them as rebels.
+
+edify | ˈɛdɪfʌɪ | verb formal
+instruct or improve (someone) morally or intellectually: Rachel had edified their childhood with frequent readings from Belloc.
+
+efflux | ˈɛflʌks | noun technical
+the flowing out of a substance or particle: the same active efflux of sodium from the cytoplasm to the external medium.
+
+elegy | ˈɛlədʒi | noun
+1. a poem of serious reflection, typically a lament for the dead: he wrote elegies for friends who died during the war.
+
+elide | ɪˈlʌɪd | verb
+1. omit (a sound or syllable) when speaking: English speakers often elide the vowel completely.
+2. join together; merge: whole periods of time are elided into a few seconds of screen time.
+
+Elysian | ɪˈlɪzɪən | adjective
+relating to or characteristic of heaven or paradise: Elysian visions.
+
+embitter | ɪmˈbɪtə | verb
+make (someone) feel bitter or resentful: he didn't let illness and divorce embitter him.
+
+éminence grise | ˌɛmɪnɒ̃s ˈɡriːz | noun
+a person who exercises power or influence in a certain sphere without holding an official position: for years he has been an éminence grise operating in the shadows of party policy-making.
+
+eminent | ˈɛmɪnənt | adjective
+1. (of a person) famous and respected within a particular sphere: one of the world's most eminent statisticians.
+
+emollient | ɪˈmɒlɪənt | adjective
+2. attempting to avoid confrontation or anger; calming or conciliatory: the president's emollient approach to differences.
+
+empyrean | ˌɛmpɪˈriːən | adjective
+relating to heaven or the sky: the empyrean domain where human will and God's will became as one.
+
+encyclical | ɪnˈsɪklɪkl | noun
+a papal letter sent to all bishops of the Roman Catholic Church.
+
+enfeeble | ɪnˈfiːbl | verb
+make weak or feeble: sickness had enfeebled me.
+
+enjoin | ɪnˈdʒɔɪn | verb
+instruct or urge (someone) to do something: the code enjoined members to trade fairly.
+
+enmity | ˈɛnmɪti | noun
+a state or feeling of active opposition or hostility: decades of enmity between the two countries.
+
+ensorcell | ɪnˈsɔːs(ə) l verb archaic
+enchant; fascinate: he was a child when the power of a mythic image first ensorcelled him.
+
+enteral | ˈɛnt(ə)rəl | adjective Medicine
+involving or passing through the intestine, either naturally via the mouth and oesophagus, or through an artificial opening. Often contrasted with parenteral.
+
+epistemological | ɪˌpɪstəməˈlɒdʒɪkl | adjective Philosophy
+relating to the theory of knowledge, especially with regard to its methods, validity, and scope, and the distinction between justified belief and opinion: what epistemological foundation is there for such an artificial discrimination?
+
+epithet | ˈɛpɪθɛt | noun
+an adjective or phrase expressing a quality or attribute regarded as characteristic of the person or thing mentioned: old men are often unfairly awarded the epithet ‘dirty’.
+
+eponymous | ɪˈpɒnɪməs | adjective
+(of a person) giving their name to something: the eponymous hero of the novel.
+
+equivocation | ɪˌkwɪvəˈkeɪʃ(ə)n | noun
+the use of ambiguous language to conceal the truth or to avoid committing oneself; prevarication: I say this without equivocation.
+
+erstwhile | ˈəːstwʌɪl | adjective
+former: the erstwhile president of the company.
+
+erudite | ˈɛr(j)ʊdʌɪt | adjective
+having or showing great knowledge or learning: Ken could turn any conversation into an erudite discussion.
+
+escarpment | ɪˈskɑːpm(ə)nt | noun
+a long, steep slope, especially one at the edge of a plateau or separating areas of land at different heights.
+
+eschatology | ˌɛskəˈtɒlədʒi | noun
+the part of theology concerned with death, judgement, and the final destiny of the soul and of humankind: Christian hope is concerned with eschatology, or the science of last things.
+
+escutcheon | ɪˈskʌtʃ(ə)n | noun
+1. a shield or emblem bearing a coat of arms.
+2. (also escutcheon plate) a flat piece of metal for protection and often ornamentation, around a keyhole, door handle, or light switch.
+
+esprit de corps | ɛˌspriː də ˈkɔː | noun
+a feeling of pride and mutual loyalty shared by the members of a group: they developed some esprit de corps through athletics competitions.
+
+evince | ɪˈvɪns | verb formal
+reveal the presence of (a quality or feeling); indicate: the news stories evinced the usual mixture of sympathy and satisfaction.
+
+excoriate | ɛkˈskɔːrɪeɪt | verb
+2. formal criticize (someone) severely: he excoriated the government for censorship.
+
+excrescence | ɪkˈskrɛsns | noun
+a distinct outgrowth on a body or plant, resulting from disease or abnormality: the males often have a strange excrescence on the tip of the snout.
+• an unattractive or superfluous object or feature: the building is a sixties excrescence foisted on an otherwise flawless street.
+
+exculpate | ˈɛkskʌlpeɪt | verb formal
+show or declare that (someone) is not guilty of wrongdoing: the article exculpated the mayor.
+
+exegesis | ˌɛksɪˈdʒiːsɪs | noun
+critical explanation or interpretation of a text, especially of scripture: the task of biblical exegesis.
+
+exeunt | ˈɛksɪʌnt, ˈɛksɪʊnt | verb
+used as a stage direction in a play to indicate that a group of actors leave the stage: exeunt Hamlet and Polonius.
+
+exigent | ˈɛksɪdʒ(ə)nt | adjective formal
+pressing; demanding: the exigent demands of her contemporaries' music took a toll on her voice.
+
+expectorate | ɪkˈspɛktəreɪt | verb
+cough or spit out (phlegm) from the throat or lungs: she was expectorating dirty coloured sputum
+
+expiate | ˈɛkspɪeɪt | verb
+make amends or reparation for (guilt or wrongdoing): their sins must be expiated by sacrifice.
+
+expostulate | ɪkˈspɒstjʊleɪt | verb
+express strong disapproval or disagreement: he found Fox expostulating with a young man.
+
+expurgate | ˈɛkspəɡeɪt | verb
+remove matter thought to be objectionable or unsuitable from (a text or account): editors heavily expurgated the novel before its initial publication.
+
+explicate | ˈɛksplɪkeɪt | verb
+analyse and develop (an idea or principle) in detail: an attempt to explicate the relationship between crime and economic forces.
+
+exsanguinate | ɪkˈsaŋɡwɪneɪt | verb Medicine
+drain (a person, animal, or organ) of blood: carotid and jugular vessels were cut to exsanguinate the heart.
+
+extant | ɛkˈstant | adjective
+still in existence; surviving: an extant letter.
+
+extemporise | ɪkˈstɛmpərʌɪz | verb
+compose or perform something such as music or a speech without preparation; improvise: he extemporized at the piano.
+
+extirpate | ˈɛkstəpeɪt | verb
+eradicate or destroy completely: timber wolves were extirpated from New England more than a century ago.
+
+exultant | ɪɡˈzʌlt(ə)nt | adjective
+triumphantly happy: he waved to the exultant crowds.
+
+exurbia | ɛkˈsəːbɪə | noun
+the exurbs collectively; the area beyond the suburbs.
+
+eyrie | ˈɪəri | noun
+a large nest of an eagle or other bird of prey, built high in a tree or on a cliff.
+• a high or inaccessible place from which someone can observe what is below them: his 40th floor eyrie in the tallest office building in Portland.
+
+fabulist | ˈfabjʊlɪst | noun
+a person who composes or relates fables.
+• a liar, especially one who invents elaborately dishonest stories: a born fabulist, with an imagination unfettered by the laws of logic and probability.
+
+factoid | ˈfaktɔɪd | noun
+an item of unreliable information that is reported and repeated so often that it becomes accepted as fact: he addresses the facts and factoids which have buttressed the film's legend.
+
+fait accompli | ˌfeɪt əˈkɒmpli | noun
+a thing that has already happened or been decided before those affected hear about it, leaving them with no option but to accept it: the results were presented to shareholders as a fait accompli.
+
+farrago | fəˈrɑːɡəʊ | noun
+a confused mixture: a farrago of fact and myth about Abraham Lincoln.
+
+farrier | ˈfarɪə | noun
+a smith who shoes horses.
+
+fatuous | ˈfatjʊəs | adjective
+silly and pointless: a fatuous comment.
+
+febrile | ˈfiːbrʌɪl | adjective
+2. characterized by a great deal of nervous excitement or energy: the febrile atmosphere of the city.
+
+feckless | ˈfɛkləs | adjective
+lacking initiative or strength of character; irresponsible: her feckless younger brother.
+
+feculent | ˈfɛkjʊlənt | adjective
+of or containing dirt, sediment, or waste matter: their feet were forever slipping on feculent bog.
+
+fecund | ˈfɛk(ə)nd | adjective
+producing or capable of producing an abundance of offspring or new growth; highly fertile: a lush and fecund garden.
+
+felicity | fɪˈlɪsɪti | noun
+1. intense happiness: domestic felicity.
+
+festoon | fɛˈstuːn | noun
+1. a chain or garland of flowers, leaves, or ribbons, hung in a curve as a decoration.
+
+fete | feɪt | (also fête) verb
+honour or entertain (someone) lavishly: she was an instant celebrity, feted by the media.
+
+fetid | ˈfɛtɪd | adjective
+smelling extremely unpleasant: the fetid water of the marsh.
+
+fetter | ˈfɛtə | noun
+a chain or manacle used to restrain a prisoner, typically placed around the ankles: he lay bound with fetters of iron.
+• a restraint or check on someone's freedom to act: the fetters of convention.
+
+fiat | ˈfiːat | noun
+a formal authorization or proposition; a decree: the reforms left most prices fixed by government fiat.
+• an arbitrary order.
+
+filigree | ˈfɪlɪɡriː | noun
+ornamental work of fine (typically gold or silver) wire formed into delicate tracery: filigree earrings | pine needles draped with a delicate filigree of mist.
+
+fillip | ˈfɪlɪp | noun
+1. something which acts as a stimulus or boost to an activity: the halving of car tax would provide a fillip to sales.
+
+firebrand | ˈfʌɪəbrand | noun
+1. a person who is very passionate about a particular cause: a political firebrand.
+2. a piece of burning wood.
+
+firewall | ˈfʌɪəwɔːl | noun
+a wall or partition designed to inhibit or prevent the spread of fire.
+
+firmament | ˈfəːməm(ə)nt | noun literary
+the heavens or sky: thunder shakes the firmament.
+
+flexion | ˈflɛkʃn | noun
+the action of bending or the condition of being bent, especially the bending of a limb or joint: flexion of the fingers.
+
+florid | ˈflɒrɪd | adjective
+1. having a red or flushed complexion: a stout man with a florid face.
+
+foment | fə(ʊ)ˈmɛnt | verb
+1. instigate or stir up (an undesirable or violent sentiment or course of action): they accused him of fomenting political unrest.
+
+fop | fɒp | noun
+a man who is concerned with his clothes and appearance in an affected and excessive way.
+
+forbearance | fəˈbɛːrəns | noun
+patient self-control; restraint and tolerance: his unfailing courtesy and forbearance under great provocation.
+
+foretaste | ˈfɔːteɪst | noun
+a sample or suggestion of something that lies ahead: his behemoth task force is just a foretaste of what is to come.
+
+forfend | fɔːˈfɛnd | verb
+1. archaic avert or prevent (something evil or unpleasant): ‘The fiend forfend’ said the grim Earl.
+
+four-square | ˌfɔːˈskwɛː | adjective
+(of a building or structure) having a square shape and solid appearance: a four-square Georgian house.
+• (of a person or quality) firm and resolute: a four-square and formidable hero.
+
+freshet | ˈfrɛʃɪt | noun
+the flood of a river from heavy rain or melted snow.
+
+frippery | ˈfrɪp(ə)ri | noun
+showy or unnecessary ornament in architecture, dress, or language: a strictly business building with not a hint of frippery.
+• a tawdry or frivolous thing: you'll have to forgo fripperies like glossy mags.
+
+frisson | ˈfriːsɒn | noun
+a sudden strong feeling of excitement or fear; a thrill: a frisson of excitement.
+
+fulminating | ˈfʊlmɪneɪtɪŋ | adjective
+1. expressing vehement protest: public discourse on the subject has been dominated by fulminating politicians | he writes fulminating letters on behalf of clients.
+2. Medicine (of a disease or symptom) having developed suddenly and severely: fulminating appendicitis.
+
+furcate | ˈfəːkeɪt | verb technical 
+divide into two or more branches; fork: lines of descent furcating from a common source.
+
+furtive | ˈfəːtɪv | adjective
+attempting to avoid notice or attention, typically because of guilt or a belief that discovery would lead to trouble; secretive: they spent a furtive day together.
+
+gable | ˈɡeɪbl | noun
+the triangular upper part of a wall at the end of a ridged roof: a house with mock-Tudor gables.
+
+gad | ɡad | verb informal
+go from place to place in the pursuit of pleasure: he had heard that I was gadding about with an airline stewardess.
+
+gadfly | ˈɡadflʌɪ | noun
+a fly that bites livestock, especially a horsefly, warble fly, or botfly.
+• derogatory a person who annoys or criticizes others in order to provoke them into action: always a gadfly, he attacked intellectual orthodoxies.
+
+gainsay | ˌɡeɪnˈseɪ | verb 
+deny or contradict (a fact or statement): the impact of the railways cannot be gainsaid.
+
+garret | ˈɡarət | noun
+a top-floor or attic room, especially a small dismal one: the solitary genius starving in a cold garret.
+
+garrulous | ˈɡarʊləs | adjective
+excessively talkative, especially on trivial matters: a garrulous cab driver.
+
+genuflection | ˌdʒɛnjʊˈflɛkʃn | noun
+the action of lowering one's body briefly by bending one knee to the ground, typically in worship or as a sign of respect: the priest's genuflection is a ritual action of the Mass.
+
+gerund | ˈdʒɛrənd | noun Grammar
+a verb form which functions as a noun, in Latin ending in -ndum (declinable), in English ending in -ing (e.g. “asking” in “do you mind my asking you?”).
+
+gestalt | ɡəˈʃtalt, ɡəˈʃtɑːlt | noun
+an organized whole that is perceived as more than the sum of its parts.
+
+gird 1 | ɡəːd | verb
+1. literary encircle (a person or part of the body) with a belt or band: a young man was to be girded with the belt of knighthood.
+
+gloaming | ˈɡləʊmɪŋ | noun
+twilight; dusk: hundreds of lights are already shimmering in the gloaming.
+
+gild | ɡɪld | verb
+cover thinly with gold: in 1436 he gilded and painted statues for Bruges Town Hall | the first rays of the sun were gilding the grassy hillside.
+
+gonzo | ˈɡɒnzəʊ | adjective informal
+1. relating to or denoting journalism of an exaggerated, subjective, and fictionalized style: a gonzo journalist.
+2. very strange or bizarre: he has starred in gonzo action flicks and quiet indie films.
+
+grammarian | ɡrəˈmɛːrɪən | noun
+a person who studies and writes about grammar.
+
+grandiloquent | ɡranˈdɪləkw(ə)nt | adjective
+pompous or extravagant in language, style, or manner, especially in a way that is intended to impress: a grandiloquent celebration of Spanish glory.
+
+grimoire | ɡrɪmˈwɑː | noun
+a book of magic spells and invocations.
+
+grist | ɡrɪst | noun
+2. useful material, especially to support an argument: the research provided the most sensational grist for opponents of tobacco.
+
+gurn | ɡəːn | verb
+1. British English pull a grotesque face.
+
+gybe | dʒʌɪb | verb Sailing 
+change course by swinging the sail across a following wind: they gybed, and the boat turned over.
+
+hag-ridden | ˈhaɡˌrɪdn | adjective
+afflicted by nightmares or anxieties: he was hag-ridden by his early success.
+
+halcyon | ˈhalsɪən | adjective
+denoting a period of time in the past that was idyllically happy and peaceful: the halcyon days of the mid 1980s, when profits were soaring.
+
+hames | heɪmz | plural noun
+two curved pieces of iron or wood forming or attached to the collar of a draught horse, to which the traces are attached.
+
+harangue | həˈraŋ | noun
+a lengthy and aggressive speech: they were subjected to a ten-minute harangue by two border guards.
+
+hart | hɑːt | noun
+an adult male deer, especially a red deer over five years old.
+
+hegemon | ˈhɛdʒɪmɒn | noun
+a supreme leader.
+
+henpeck | ˈhɛnpɛk | verb informal
+(of a woman) continually criticize and give orders to (her husband or male partner): I don't feel it's my place to henpeck him about it.
+
+herewith | ˌhɪəˈwɪð | adverb
+with this letter: I enclose herewith a copy of this discussion document.
+
+hermetically | hə(ː)ˈmɛtɪkli | adverb
+in a way that is completely airtight: hermetically sealed windows help to keep out cold air.
+
+hew | hjuː | verb
+chop or cut (something, especially wood or coal) with an axe, pick, or other tool: master carpenters would hew the logs with an axe.
+
+highfalutin | ˌhʌɪfəˈluːt(ɪ)n | adjective informal
+(especially of speech, writing, or ideas) pompous or pretentious: you don't want any highfalutin jargon.
+
+hoary | ˈhɔːri | adjective
+1. greyish white: hoary cobwebs.
+• (of a person) old and having grey or white hair: a hoary old fellow with a face of white stubble.
+2. overused and unoriginal; trite: the hoary old adage often used by Fleet Street editors.
+
+homily | ˈhɒmɪli | noun
+a religious discourse which is intended primarily for spiritual edification rather than doctrinal instruction.
+• a tedious moralizing lecture: she delivered her homily about the need for patience.
+
+horripilation | hɒˌrɪpɪˈleɪʃn | noun literary
+the erection of hairs on the skin due to cold, fear, or excitement: a horripilation of dread tingled down my spine.
+
+hortatory | ˈhɔːtət(ə)ri | adjective
+tending or aiming to exhort: a series of hortatory epistles.
+
+hostelry | ˈhɒstlri | noun archaic or humorous
+an inn or pub: the hostelry, a traditional coaching inn, dates back to 1480.
+
+hypocentre | ˈhʌɪpə(ʊ)sɛntə | noun
+1. the point within the earth where an earthquake originates.
+2. the point on the earth's surface directly above or below an exploding nuclear bomb.
+
+hysteresis | ˌhɪstəˈriːsɪs | noun Physics
+the phenomenon in which the value of a physical property lags behind changes in the effect causing it, as for instance when magnetic induction lags behind the magnetizing force.
+
+iconoclast | ʌɪˈkɒnəklast | noun
+1. a person who attacks or criticises cherished beliefs or institutions: he was one of music's true iconoclasts.
+2. a destroyer of images used in religious worship: the paintings were destroyed by the iconoclasts.
+
+idem | ˈɪdɛm | adverb
+used in citations to indicate an author or word that has just been mentioned: Marianne Elliott, Partners in Revolution, 1982; idem, Wolfe Tone, 1989.
+
+imbricate | ˈɪmbrɪkət | adjective
+(of scales, sepals, plates, etc.) having adjacent edges overlapping. Compare with valvate.
+
+imbroglio | ɪmˈbrəʊlɪəʊ | noun
+an extremely confused, complicated, or embarrassing situation: the abdication imbroglio of 1936.
+
+immanent | ˈɪmənənt | adjective
+existing or operating within; inherent: the protection of liberties is immanent in constitutional arrangements.
+
+imperil | ɪmˈpɛrɪl | verb
+put at risk of being harmed, injured, or destroyed: they advised against tax increases for fear of imperilling the recovery.
+
+implicature | ˈɪmplɪkətʃə | noun
+the action of implying a meaning beyond the literal sense of what is explicitly stated, for example saying “the frame is nice” and implying “I don't like the picture in it”.
+
+impolitic | ɪmˈpɒlɪtɪk | adjective
+failing to possess or display prudence; unwise: it was impolitic to pay the slightest tribute to the enemy.
+
+importunate | ɪmˈpɔːtjʊnət | adjective
+persistent, especially to the point of annoyance: importunate creditors.
+
+imprecate | ˈɪmprɪkeɪt | verb archaic
+utter (a curse) or invoke (evil) against someone or something: how often did I imprecate curses on the cause of my being!
+
+improvident | ɪmˈprɒvɪd(ə)nt | adjective
+not having or showing foresight; spendthrift or thoughtless: improvident and undisciplined behaviour.
+
+impugn | ɪmˈpjuːn | verb
+dispute the truth, validity, or honesty of (a statement or motive); call into question: the father does not impugn her capacity as a good mother.
+
+inapt | ɪnˈapt | adjective
+not suitable or appropriate in the circumstances: a more inapt name I cannot imagine.
+
+inchoate | ɪnˈkəʊət | adjective
+1. just begun and so not fully formed or developed; rudimentary: a still inchoate democracy.
+• confused or incoherent: inchoate proletarian protest.
+
+incipient | ɪnˈsɪpɪənt | adjective
+beginning to happen or develop: he could feel incipient anger building up.
+
+incommode | ˌɪnkəˈməʊd | verb formal
+inconvenience (someone): they are incommoded by the traffic.
+
+inculcate | ˈɪnk(ʌ)lkeɪt | verb
+instil (an idea, attitude, or habit) by persistent instruction: I tried to inculcate in my pupils an attitude of enquiry.
+
+indefatigable | ˌɪndɪˈfatɪɡəbl | adjective
+(of a person or their efforts) persisting tirelessly: an indefatigable defender of human rights.
+
+indolent | ˈɪndələnt | adjective
+1. wanting to avoid activity or exertion; lazy: they were indolent and addicted to a life of pleasure.
+
+indomitable | ɪnˈdɒmɪtəbl | adjective
+impossible to subdue or defeat: a woman of indomitable spirit.
+
+infelicity | ˌɪnfɪˈlɪsɪti | noun
+1. a thing that is inappropriate, especially a remark or expression: she winced at their infelicities and at the clumsy way they talked.
+
+injurious | ɪnˈdʒʊərɪəs | adjective
+causing or likely to cause damage or harm: food which is injurious to health.
+• (of language) maliciously insulting; libellous.
+
+inimical | ɪˈnɪmɪkl | adjective
+tending to obstruct or harm: the policy was inimical to Britain's real interests.
+• unfriendly; hostile: an inimical alien power.
+
+iniquitous | ɪˈnɪkwɪtəs | adjective
+grossly unfair and morally wrong: an iniquitous tax | these awards remain an iniquitous system.
+
+insouciance | ɪnˈsuːsɪəns | noun
+casual lack of concern; indifference: an impression of boyish insouciance.
+
+inspissate | ɪnˈspɪseɪt | verb
+thicken or congeal: whatever tends to inspissate sap has the property of causing flower buds to be produced.
+
+insuperable | ɪnˈs(j)uːp(ə)rəbl | adjective
+(of a difficulty or obstacle) impossible to overcome: insuperable financial problems.
+
+intemperate | ɪnˈtɛmp(ə)rət | adjective
+having or showing a lack of self-control; immoderate: intemperate outbursts concerning global conspiracies.
+
+inter | ɪnˈtəː | verb
+place (a corpse) in a grave or tomb, typically with funeral rites: he was interred with the military honours due to him.
+
+inter alia | ˌɪntər ˈeɪlɪə, ˈalɪə | adverb
+among other things: the study includes, inter alia, computers, aircraft, and pharmaceuticals.
+
+interlocutor | ɪntəˈlɒkjʊtə | noun formal
+a person who takes part in a dialogue or conversation: my interlocutor offered several arguments on the relative merits of the proposal.
+
+interment | ɪnˈtəːm(ə)nt | noun
+the burial of a corpse in a grave or tomb, typically with funeral rites: the day of interment.
+
+interoceptive | ˌɪntərəʊˈsɛptɪv | adjective Physiology
+relating to stimuli produced within an organism, especially in the gut and other internal organs. Compare with exteroceptive.
+
+interregnum | ˌɪntəˈrɛɡnəm | noun
+a period when normal government is suspended, especially between successive reigns or regimes.
+
+inured | ɪˈnjʊə, ɪˈnjɔː | verb
+1. (usually be inured to) accustom (someone) to something, especially something unpleasant: these children have been inured to violence.
+
+inveigh | ɪnˈveɪ | verb
+speak or write about (something) with great hostility: he liked to inveigh against all forms of academic training.
+
+inveigle | ɪnˈveɪɡl | verb
+persuade (someone) to do something by means of deception or flattery: we cannot inveigle him into putting pen to paper.
+
+inveterate | ɪnˈvɛt(ə)rət | adjective
+having a particular habit, activity, or interest that is long-established and unlikely to change: an inveterate gambler.
+
+invidious | ɪnˈvɪdɪəs | adjective
+(of an action or situation) likely to arouse or incur resentment or anger in others: she'd put herself in an invidious position.
+
+inviolate | ɪnˈvʌɪələt | adjective
+free or safe from injury or violation: an international memorial which must remain inviolate.
+
+ipso facto | ˌɪpsəʊ ˈfaktəʊ | adverb
+by that very fact or act: the enemy of one's enemy may be ipso facto a friend.
+
+irascible | ɪˈrasɪb(ə)l | adjective
+having or showing a tendency to be easily angered: an irascible and difficult man.
+
+ironise | ˈʌɪrənʌɪz | verb
+use ironically: this novel follows and yet ironises many of the conventions of the picaresque narrative.
+
+isthmus | ˈɪsθməs | noun
+1. a narrow strip of land with sea on either side, forming a link between two larger areas of land: the isthmus was an important overland route between the Atlantic and Pacific.
+
+itinerant | ʌɪˈtɪnərənt | adjective
+travelling from place to place: itinerant traders.
+
+jejune | dʒɪˈdʒuːn | adjective
+1. naive, simplistic, and superficial: their entirely predictable and usually jejune opinions.
+
+jeremiad | ˌdʒɛrɪˈmʌɪad | noun
+a long, mournful complaint or lamentation; a list of woes: the jeremiads of puritan preachers warning of moral decay.
+
+jingoism | ˈdʒɪŋɡəʊɪz(ə)m | noun mainly derogatory
+extreme patriotism, especially in the form of aggressive or warlike foreign policy: the popular jingoism that swept the lower–middle classes.
+
+jounce | dʒaʊns | verb
+jolt or bounce: the pilot jounced the ship through turbulence.
+
+junket | ˈdʒʌŋkɪt | noun
+1. informal an extravagant trip or celebration, in particular one enjoyed by a government official at public expense: the latest row over city council junkets.
+
+jurisprudence | ˌdʒʊərɪsˈpruːd(ə)ns | noun
+the theory or philosophy of law.
+
+kayfabe | ˈkeɪfeɪb | noun US English informal
+(in professional wrestling) the fact or convention of presenting staged performances as genuine or authentic: a masterful job of blending kayfabe and reality | he's not someone who can break kayfabe and talk about the business.
+
+ken | kɛn | noun
+one's range of knowledge or understanding: politics are beyond my ken.
+
+kludge | klʌdʒ | noun informal
+an ill-assorted collection of parts assembled to fulfil a particular purpose.
+
+knees-up | ˈniː zʌp | noun British English informal
+a lively party or gathering: we had a bit of a knees-up last night.
+
+koan | ˈkəʊan | noun
+a paradoxical anecdote or riddle without a solution, used in Zen Buddhism to demonstrate the inadequacy of logical reasoning and provoke enlightenment.
+
+laconic | ləˈkɒnɪk | adjective
+(of a person, speech, or style of writing) using very few words: his laconic reply suggested a lack of interest in the topic.
+
+lahar | ˈlɑːhɑː | noun Geology
+a destructive mudflow on the slopes of a volcano.
+
+largesse | lɑːˈ(d)ʒɛs | noun
+generosity in bestowing money or gifts upon others: presumably public money is not dispensed with such largesse to anyone else.
+
+lascivious | ləˈsɪvɪəs | adjective
+feeling or revealing an overt sexual interest or desire: he gave her a lascivious wink.
+
+lassitude | ˈlasɪtjuːd | noun
+a state of physical or mental weariness; lack of energy: she was overcome by lassitude and retired to bed.
+
+lean-to | ˈliːntuː | noun
+a building sharing one wall with a larger building, and having a roof that leans against that wall: a lean-to garage.
+• a temporary shelter, either supported or free-standing: they constructed a crude lean-to to keep the snow from them.
+
+leery | ˈlɪəri | adjective informal
+cautious or wary due to realistic suspicions: a city leery of gang violence.
+
+leeward | ˈliːwəd | adjective
+situated on or towards the side sheltered from the wind; downwind: the leeward side of the house. Contrasted with windward.
+
+legerdemain | ˌlɛdʒədəˈmeɪn | noun
+skilful use of one's hands when performing conjuring tricks.
+
+leitmotif | ˈlʌɪtməʊˌtiːf | noun
+a recurrent theme throughout a musical or literary composition, associated with a particular person, idea, or situation: there are two leitmotifs in his score marking the heroine and her Fairy Godmother.
+
+leucistic | luːˈsɪstɪk | adjective Zoology
+(of an animal) having whitish fur, plumage, or skin due to a lack of pigment.
+
+libertine | ˈlɪbətiːn | noun
+1. a person, especially a man, who freely indulges in sensual pleasures without regard to moral principles: his image as an unbridled libertine is a total myth.
+2. a freethinker in matters of religion.
+
+lien | ˈliːən | noun Law
+a right to keep possession of property belonging to another person until a debt owed by that person is discharged: they shall be entitled to a lien on any lot sold.
+
+Lilliputian | ˌlɪlɪˈpjuːʃn | adjective
+trivial or very small: America's banks look Lilliputian in comparison with Japan's.
+
+limerence | ˈlɪm(ə)rəns | noun
+a state of being infatuated or obsessed with another person, typically characterized by a strong desire for reciprocation of one's feelings but not primarily for a sexual relationship.
+
+lingua franca | ˌlɪŋɡwə ˈfraŋkə | noun
+a language that is adopted as a common language between speakers whose native languages are different.
+
+lintel | ˈlɪntl | noun
+a horizontal support of timber, stone, concrete, or steel across the top of a door or window.
+
+liturgy | ˈlɪtədʒi | noun
+1. a form or formulary according to which public religious worship, especially Christian worship, is conducted: the Church of England liturgy.
+
+liveried | ˈlɪv(ə)rɪd | adjective mainly British English
+(of a servant or official) dressed in a special uniform: she sips wine served by liveried butlers.
+
+lodestone | ˈləʊdstəʊn | noun
+a piece of magnetite or other naturally magnetized mineral, able to be used as a magnet.
+• a person or thing that is the focus of attention or attraction: the revolution in eastern Europe has robbed the state of its ideological lodestone.
+
+loquacious | lə(ʊ)ˈkweɪʃəs | adjective
+tending to talk a great deal; talkative: never loquacious, Sarah was now totally lost for words.
+
+luff | lʌf | Sailing
+noun: the edge of a fore-and-aft sail next to the mast or stay: if your luff is flapping, pull the sail towards you to fill it with wind.
+verb: steer a yacht nearer the wind: all you need to do is luff up, head to wind.
+
+lugubrious | lʊˈɡ(j)uːbrɪəs | adjective
+looking or sounding sad and dismal: his face looked even more lugubrious than usual.
+
+lurid | ˈl(j)ʊərɪd | adjective
+unpleasantly bright in colour, especially so as to create a harsh or unnatural effect: lurid food colourings | a pair of lurid shorts.
+• presented in vividly shocking or sensational terms: the more lurid details of the massacre were too frightening for the children.
+
+macerate | ˈmasəreɪt | verb
+1. (especially with reference to food) soften or become softened by soaking in a liquid: [with object] : macerate the mustard seeds in vinegar.
+
+magnanimous | maɡˈnanɪməs | adjective
+generous or forgiving, especially towards a rival or less powerful person: she should be magnanimous in victory.
+
+malediction | ˌmalɪˈdɪkʃn | noun
+a magical word or phrase uttered with the intention of bringing about evil; a curse: he muttered maledictions to himself as he trod the stone passages.
+
+malice aforethought | ˌmalɪs əˈfɔːθɔːt | noun Law
+the intention to kill or harm, which distinguishes murder from unlawful killing: the accused has caused death but did not have malice aforethought.
+
+malodorous | malˈəʊd(ə)rəs | adjective
+smelling very unpleasant: leaking taps and malodorous drains.
+
+mandamus | manˈdeɪməs | noun Law
+a judicial writ issued as a command to an inferior court or ordering a person to perform a public or statutory duty: an order of mandamus.
+
+manifestly | ˈmanɪfɛstli | adverb
+in a way that is clear or obvious to the eye or mind: we have manifestly failed to exercise good judgment | the system was manifestly unfair.
+
+manifold | ˈmanɪfəʊld | adjective
+many and various: the implications of this decision were manifold.
+
+maunder | ˈmɔːndə | verb
+talk in a rambling manner: Dennis maundered on about the wine.
+
+mellifluous | mɪˈlɪflʊəs | adjective
+(of a sound) pleasingly smooth and musical to hear: her low mellifluous voice.
+
+memetic | mɪˈmɛtɪk | adjective
+relating to or constituting an element of a culture or system of behaviour that is passed from one individual to another by imitation or other non-genetic means: the book shows various memetic lines of transmission.
+
+mendacity | mɛnˈdasɪti | noun
+untruthfulness; lying: people publicly castigated for past mendacity.
+
+mendicant | ˈmɛndɪk(ə)nt | adjective
+living by begging.
+
+mercantile | ˈməːk(ə)ntʌɪl | adjective
+relating to trade or commerce; commercial: the shift of wealth to the mercantile classes.
+
+meretricious | ˌmɛrɪˈtrɪʃəs | adjective
+1. apparently attractive but having no real value: meretricious souvenirs for the tourist trade.
+
+mesa | ˈmeɪsə | noun
+an isolated flat-topped hill with steep sides, as found in arid and semi-arid areas of the US.
+
+metacognition | ˌmɛtəkɒɡˈnɪʃn | noun Psychology
+awareness and understanding of one's own thought processes.
+
+miasma | mɪˈazmə | noun literary
+an unpleasant or unhealthy smell or vapour: a miasma of stale alcohol hung around him.
+• an oppressive or unpleasant atmosphere which surrounds or emanates from something: there was a miasma of despair over this place.
+
+mien | miːn | noun
+a person's appearance or manner, especially as an indication of their character or mood: he has a cautious, academic mien.
+
+milquetoast | ˈmɪlktəʊst | North American English | adjective
+feeble, insipid, or bland: a soppy, milquetoast composer | he ran a milquetoast campaign.
+
+mirepoix | ˌmɪəˈpwɑː | noun
+a mixture of sautéed chopped vegetables used in various sauces.
+
+mirth | məːθ | noun
+amusement, especially as expressed in laughter: his six-foot frame shook with mirth.
+
+misrule | ˌmɪsˈruːl | noun
+1. the unfair or inefficient conduct of the affairs of a country or state: a country that is recovering from decades of misrule.
+
+moil | mɔɪl | verb archaic
+1. work hard: men who moiled for gold.
+2. move around in confusion or agitation: a crowd of men and women moiled in the smoky haze. 
+
+monomania | ˌmɒnə(ʊ)ˈmeɪnɪə | noun
+exaggerated or obsessive enthusiasm for or preoccupation with one thing: she has an obsession with the drug that verges on monomania | at an early age he developed a monomania about Africa.
+
+monotonic | ˌmɒnəˈtɒnɪk | adjective
+1. Mathematics (of a function or quantity) varying in such a way that it either never decreases or never increases.
+
+moppet | ˈmɒpɪt | noun informal
+a small endearingly sweet child: the then-famous silver-screen moppets.
+
+morass | məˈras | noun
+1. an area of muddy or boggy ground: in midwinter the track beneath this bridge became a muddy morass.
+2. a complicated or confused situation: she would become lost in a morass of lies and explanations.
+
+mores | ˈmɔːreɪz | plural noun
+the essential or characteristic customs and conventions of a society or community: an offence against social mores.
+
+moribund | ˈmɒrɪbʌnd | adjective
+(of a person) at the point of death: on examination she was moribund and dehydrated.
+• (of a thing) in terminal decline; lacking vitality or vigour: the moribund commercial property market.
+
+morpheme | ˈmɔːfiːm | noun Linguistics
+a meaningful morphological unit of a language that cannot be further divided (e.g. in, come, -ing, forming incoming).
+
+mountebank | ˈmaʊntɪbaŋk | noun
+a person who deceives others, especially in order to trick them out of their money; a charlatan: he was a mountebank who exploited his followers.
+
+mullion | ˈmʌlɪən | noun
+a vertical bar between the panes of glass in a window. Compare with transom.
+
+multilateralism | ˌmʌltɪˈlat(ə)rəlɪz(ə)m | noun
+the principle of participation by three or more parties, especially by the governments of different countries: the president affirmed his commitment to multilateralism.
+
+naïf | nʌɪˈiːf | adjective
+naive or ingenuous: he is a naif young man, who is easy to trick.
+
+neologism | nɪˈɒlədʒɪz(ə)m | noun
+a newly coined word or expression: this neologism aptly describes the frustration of conversing online.
+
+neonate | ˈniːə(ʊ)neɪt | noun technical
+a newborn child (or other mammal).
+
+neophyte | ˈniːə(ʊ)fʌɪt | noun
+1. a person who is new to a subject or activity: four-day cooking classes are offered to neophytes and experts.
+
+nimbus | ˈnɪmbəs | noun
+1. a luminous cloud or a halo surrounding a supernatural being or a saint: a nimbus of power played around him, brighter than lightning.
+• a light, colour, etc., that surrounds someone or something.
+
+nominalise | ˈnɒmɪnəlʌɪz | verb grammar
+form (a noun) from a verb or adjective, e.g. output, truth, from put out, true.
+
+non sequitur | nɒn ˈsɛkwɪtə | noun
+a conclusion or statement that does not logically follow from the previous argument or statement: his weird mixed metaphors and non sequiturs.
+
+nonpareil | ˌnɒnpəˈreɪ(l) | adjective
+having no match or equal; unrivalled: he is a nonpareil storyteller.
+
+nostrum | ˈnɒstrəm | noun
+a medicine prepared by an unqualified person, especially one that is not considered effective: a charlatan who sells nostrums.
+
+novitiate | nəˈvɪʃɪət | noun
+the period or state of being a novice, especially in a religious order.
+
+nudnik | ˈnʊdnɪk | noun North American English informal, derogatory
+a pestering, nagging, or irritating person; a bore.
+
+obdurate | ˈɒbdjʊrət | adjective
+stubbornly refusing to change one's opinion or course of action: I argued this point with him, but he was obdurate.
+
+objurgate | ˈɒbdʒəɡeɪt | verb rare
+rebuke severely; scold: the old man objurgated his son.
+
+oblique | ə(ʊ)ˈbliːk | adjective
+1. neither parallel nor at right angles to a specified or implied line; slanting: we sat on the settee oblique to the fireplace.
+
+obsequious | əbˈsiːkwɪəs | adjective
+obedient or attentive to an excessive or servile degree: they were served by obsequious waiters.
+
+odious | ˈəʊdɪəs | adjective
+extremely unpleasant; repulsive: a pretty odious character | odious hypocrisy.
+
+oenophile | ˈiːnəfʌɪl | noun
+a connoisseur of wines.
+
+oligopoly | ˌɒlɪˈɡɒpəli | noun
+a state of limited competition, in which a market is shared by a small number of producers or sellers.
+
+onanism | ˈəʊnənɪz(ə)m | noun formal
+1. masturbation.
+2. coitus interruptus.
+
+ontology | ɒnˈtɒlədʒi | noun
+1. the branch of metaphysics dealing with the nature of being.
+
+oriel | ˈɔːriəl | noun
+a large upper-storey bay with a window, supported by brackets or on corbels.
+
+ornery | ˈɔːn(ə)ri | adjective North American English informal
+bad-tempered or difficult to deal with: an ornery old military man.
+
+ossify | ˈɒsɪfʌɪ | verb
+1. turn into bone or bony tissue: these tracheal cartilages may ossify.
+2. become rigid or fixed in attitude or position; cease developing: our political system has ossified.
+
+oubliette | ˌuːblɪˈɛt | noun
+a secret dungeon with access only through a trapdoor in its ceiling.
+
+outré | ˈuːtreɪ | adjective
+unusual and typically rather shocking: the composer's more outré harmonies.
+
+overweening | ˌəʊvəˈwiːnɪŋ | adjective
+showing excessive confidence or pride: overweening ambition.
+
+overwrought | ˌəʊvəˈrɔːt | adjective
+1. in a state of nervous excitement or anxiety: she was too overwrought to listen to reason.
+2. (of a piece of writing or a work of art) too elaborate or complicated in design or construction: a pseudo-Gothic church far too overwrought for such a small town.
+
+pabulum | ˈpabjʊləm | noun
+bland or insipid intellectual matter, entertainment, etc.
+
+paean | ˈpiːən | noun
+a song of praise or triumph: a paean of praise for the great poets.
+• a creative work expressing enthusiastic praise: he's created a filmic paean to his hero.
+
+palatial | pəˈleɪʃl | adjective
+resembling a palace in being spacious and splendid: her palatial apartment in Mayfair.
+
+palimpsest | ˈpalɪm(p)sɛst | noun
+a manuscript or piece of writing material on which later writing has been superimposed on effaced earlier writing.
+
+palinode | ˈpalɪnəʊd | noun
+a poem in which the poet retracts a view or sentiment expressed in a former poem.
+• a retraction of a statement.
+
+pallet1 | ˈpalɪt | noun
+a straw mattress.
+• a crude or makeshift bed.
+
+Pangloss | ˈpanɡlɒs | noun
+a person who is optimistic regardless of the circumstances: as factories moved out of the US in the 1970s, the Panglosses of the day called it progress.
+
+panoply | ˈpanəpli | noun
+an extensive or impressive collection: a deliciously inventive panoply of insults.
+
+pantheon | ˈpanθɪən | noun
+1. a group of particularly respected, famous, or important people: the pantheon of the all-time greats.
+• a building in which the illustrious dead of a nation are buried or honoured.
+
+paramour | ˈparəmʊə | noun archaic
+a lover, especially the illicit partner of a married person.
+
+parochial | pəˈrəʊkɪəl | adjective
+1. relating to a Church parish: the parochial church council.
+2. having a limited or narrow outlook or scope: parochial attitudes | their interests are too parochial.
+
+paroxysm | ˈparəksɪz(ə)m | noun
+a sudden attack or outburst of a particular emotion or activity: a paroxysm of weeping.
+
+parsimonious | ˌpɑːsɪˈməʊnɪəs | adjective
+very unwilling to spend money or use resources: even the parsimonious Joe paid for drinks all round.
+
+parvenu | ˈpɑːvən(j)uː | noun mainly derogatory
+a person of humble origin who has gained wealth, influence, or celebrity: the political inexperience of a parvenu.
+
+passé | ˈpɑːseɪ | adjective
+no longer fashionable; out of date: minis are passé—the best skirts are knee-length.
+• archaic past one's prime (typically used of a woman).
+
+pastiche | paˈstiːʃ | noun
+an artistic work in a style that imitates that of another work, artist, or period: the operetta is a pastiche of 18th century style.
+
+pate | peɪt | noun archaic or humorous
+a person's head, especially when lacking hair: he scratched his balding pate.
+
+paternalism | pəˈtəːnəlɪz(ə)m | noun
+the policy or practice on the part of people in authority of restricting the freedom and responsibilities of those subordinate to or otherwise dependent on them in their supposed interest: attitudes in society reinforce a degree of paternalism among doctors.
+
+pathos | ˈpeɪθɒs | noun
+a quality that evokes pity or sadness: the actor injects his customary humour and pathos into the role.
+
+patois | ˈpatwɑː | noun
+the dialect of a particular region, especially one with low status in relation to the standard language of the country: the nurse talked to me in a patois that even Italians would have had difficulty in understanding.
+
+peal | piːl | noun
+2. a loud repeated or reverberating sound of thunder or laughter: Ross burst into peals of laughter.
+
+pedagogic | ˌpɛdəˈɡɒdʒɪk | adjective
+relating to teaching: they show great pedagogic skills.
+
+pellicle | ˈpɛlɪkl | noun technical
+a thin skin, cuticle, membrane, or film.
+
+pentimento | ˌpɛntɪˈmɛntəʊ | noun (plural pentimenti)
+a visible trace of earlier painting beneath a layer or layers of paint on a canvas: scientific examination of his drawings has revealed pentimenti | is it chiaroscuro or pentimento?
+
+penumbra | pɪˈnʌmbrə | noun
+1. the partially shaded outer region of the shadow cast by an opaque object.
+
+perambulate | pəˈrambjʊleɪt | verb
+formal walk or travel through a place or area, especially for pleasure and in a leisurely way: the locals perambulate up and down the thoroughfare.
+
+peregrination | ˌpɛrɪɡrɪˈneɪʃn | noun archaic
+a journey, especially a long or meandering one: she kept Aunt Ilsa company on her peregrinations.
+
+peremptory | pəˈrɛm(p)t(ə)ri | adjective
+insisting on immediate attention or obedience, especially in a brusquely imperious way: ‘Just do it!’ came the peremptory reply.
+
+perforce | pəˈfɔːs | adverb formal
+used to express necessity or inevitability: amateurs, perforce, have to settle for less expensive solutions.
+
+perfunctory | pəˈfʌŋ(k)t(ə)ri | adjective
+(of an action) carried out without real interest, feeling, or effort: he gave a perfunctory nod.
+
+pergola | ˈpəːɡələ | noun
+an arched structure in a garden or park consisting of a framework covered with climbing or trailing plants.
+
+perihelion | ˌpɛrɪˈhiːlɪən | noun Astronomy
+the point in the orbit of a planet, asteroid, or comet at which it is closest to the sun. The opposite of aphelion: today Mercury is at perihelion.
+
+peripatetic | ˌpɛrɪpəˈtɛtɪk | adjective
+1. travelling from place to place, in particular working or based in various places for relatively short periods: the peripatetic nature of military life.
+
+phalanx | ˈfalaŋks | noun
+1. a body of troops or police officers standing or moving in close formation: six hundred marchers set off, led by a phalanx of police.
+
+phantasmagoria | ˌfantazməˈɡɔːrɪə | noun
+a sequence of real or imaginary images like that seen in a dream: what happened next was a phantasmagoria of horror and mystery.
+
+phenomenology | fɪˌnɒmɪˈnɒlədʒi | noun Philosophy
+the science of phenomena as distinct from that of the nature of being.
+• an approach that concentrates on the study of consciousness and the objects of direct experience.
+
+phylum | ˈfʌɪləm | noun
+1. Zoology a principal taxonomic category that ranks above class and below kingdom, equivalent to the division in botany.
+
+pied-à-terre | ˌpjɛdəˈtɛː | noun
+a small flat, house, or room kept for occasional use: the couple use the home as a pied-à-terre.
+
+pince-nez | ˌpãsˈneɪ | noun
+a pair of eyeglasses with a nose clip instead of earpieces.
+
+piquant | ˈpiːk(ə)nt | adjective
+having a pleasantly sharp taste or appetizing flavour: a piquant tartare sauce.
+• pleasantly stimulating or exciting to the mind.
+
+plaintive | ˈpleɪntɪv | adjective
+sounding sad and mournful: a plaintive cry.
+
+plenary | ˈpliːn(ə)ri | adjective
+1. (of a meeting) to be attended by all participants at a conference or assembly, who otherwise meet in smaller groups: the House is expected to bring the legislative procedures bill to a plenary meeting.
+2. unqualified; absolute: the disciplinary committee will have plenary powers.
+
+pliant | ˈplʌɪənt | adjective
+1. easily bent: pliant willow stems.
+2. easily influenced or directed; yielding: a more pliant prime minister.
+
+Podunk | ˈpəʊdʌŋk | noun US English informal
+a hypothetical small town regarded as typically dull or insignificant: she lived in a Podunk town notable for nothing except the girls' school where she taught art.
+
+poesy | ˈpəʊɪzi | noun
+poetry: they were enamoured of poesy and the fine arts.
+
+po-faced | ˌpəʊˈfeɪst | adjective British English
+humourless and disapproving: don't be so po-faced about everything.
+
+polemic | pəˈlɛmɪk | noun
+a speech or piece of writing expressing a strongly critical attack on or controversial opinion about someone or something: his polemic against the cultural relativism of the Sixties.
+
+polity | ˈpɒlɪti | noun
+a form or process of civil government or constitution: the civic humanist's polity.
+
+pomace | ˈpʌmɪs | noun
+(especially in cider-making) the pulpy residue remaining after fruit has been crushed in order to extract its juice.
+
+pontifex | ˈpɒntɪfɛks | noun
+(in ancient Rome) a member of the principal college of priests.
+
+portent | ˈpɔːtɛnt | noun
+1. a sign or warning that a momentous or calamitous event is likely to happen: many birds are regarded as being portents of death.
+
+portico | ˈpɔːtɪkəʊ | noun
+a structure consisting of a roof supported by columns at regular intervals, typically attached as a porch to a building.
+
+postpositive | ˌpəʊs(t)ˈpɒzɪtɪv | adjective
+(of a word) placed after or as a suffix on the word that it relates to: a postpositive adjective.
+
+postprandial | ˌpəʊs(t)ˈprandɪəl | adjective
+formal or humorous during or relating to the period after dinner or lunch: we were jolted from our postprandial torpor.
+
+potboiler | ˈpɒtˌbɔɪlə | noun informal
+a book, film, or other creative work produced solely to make the originator a living by catering to popular taste.
+
+pratfall | ˈpratfɔːl | noun informal
+a fall on to one's buttocks: he took a pratfall into the sand.
+• an embarrassing failure or mistake: the first political pratfalls of the new administration.
+
+praxis | ˈpraksɪs | noun formal
+1. practice, as distinguished from theory: modern political praxis is now thoroughly permeated with a productivist ethos.
+
+prefatory | ˈprɛfət(ə)ri | adjective
+serving as an introduction; introductory: in his prefatory remarks the author claims that ….
+
+prelate | ˈprɛlət | noun formal, or historical
+a bishop or other high ecclesiastical dignitary.
+
+preponderance | prɪˈpɒnd(ə)rəns | noun
+the quality or fact of being greater in number, quantity, or importance: the preponderance of women among older people.
+
+presage | ˈprɛsɪdʒ | verb
+be a sign or warning of (an imminent event, typically an unwelcome one): the heavy clouds above the moorland presaged snow.
+
+press gang | ˈprɛsˌɡaŋ | noun historical
+a body of men employed to enlist men forcibly into service in the army or navy.
+
+prevail | prɪˈveɪl | verb
+2. (prevail on/upon) persuade (someone) to do something: she was prevailed upon to give an account of her work.
+
+prig | prɪɡ | noun derogatory
+a self-righteously moralistic person who behaves as if they are superior to others: too much overt goodness can be the sign of a prig.
+
+primacy | ˈprʌɪməsi | noun
+1. the fact of being pre-eminent or most important: London's primacy as a financial centre.
+
+promulgate | ˈprɒmlɡeɪt | verb
+promote or make widely known (an idea or cause): these objectives have to be promulgated within the organization.
+
+prophylactic | ˌprɒfɪˈlaktɪk | adjective
+intended to prevent disease: prophylactic measures.
+
+propinquity | prəˈpɪŋkwɪti | noun
+1. formal the state of being close to someone or something; proximity: he kept his distance as though afraid propinquity might lead him into temptation.
+
+provender | ˈprɒv(ɪ)ndə | noun
+1. archaic food: there's no one to carry your provender in brown paper bags to the boot of your car.
+
+providential | ˌprɒvɪˈdɛnʃl | adjective
+1. occurring at a favourable time; opportune: his appearance had seemed more than just providential.
+2. involving divine foresight or providence: they took it for granted that the order of the world reflects a designing providential hand.
+
+provincial | prəˈvɪnʃl | adjective
+2. of or concerning the regions outside the capital city of a country, especially when regarded as unsophisticated or narrow-minded: the whole exhibition struck me as being very provincial.
+
+provisional | prəˈvɪʒən(ə)l | adjective
+1. arranged or existing for the present, possibly to be changed later: a provisional government | provisional bookings.
+
+prosaic | prə(ʊ)ˈzeɪɪk | adjective
+having or using the style or diction of prose as opposed to poetry; lacking imaginativeness or originality: prosaic language can't convey the experience.
+• commonplace; unromantic: the masses were too preoccupied by prosaic day-to-day concerns.
+
+proscription | prə(ʊ)ˈskrɪpʃn | noun
+the action of forbidding something; banning: the proscription of the party after the 1715 Rebellion.
+
+proselytise | ˈprɒsɪlɪtʌɪz | verb
+convert or attempt to convert (someone) from one religion, belief, or opinion to another: the programme did have a tremendous evangelical effect, proselytizing many.
+
+prosodic analysis | prəˌsɒdɪk əˈnalɪsɪs | noun
+analysis of a language based on its patterns of stress and intonation in different contexts. In systemic grammar, prosodic analysis is regarded as an essential foundation for the analysis of syntax and meaning.
+
+protean | ˈprəʊtɪən | adjective
+tending or able to change frequently or easily: it is difficult to comprehend the whole of this protean subject.
+
+prurient | ˈprʊərɪənt | adjective
+having or encouraging an excessive interest in sexual matters, especially the sexual activity of others: she'd been the subject of much prurient curiosity.
+
+puce | pjuːs | adjective
+of a dark red or purple-brown colour: his face was puce with rage and frustration.
+
+pueblo | ˈpwɛbləʊ | noun
+1. a settlement of Indigenous peoples in the south-western US, especially one consisting of multistoreyed, flat-roofed houses built of adobe or stone by the Pueblo people.
+• (in Spanish-speaking regions) a town or village.
+
+puerile | ˈpjʊərʌɪl | adjective
+childishly silly and immature: a puerile argument.
+
+pugnacious | pʌɡˈneɪʃəs | adjective
+eager or quick to argue, quarrel, or fight: his public statements became increasingly pugnacious.
+
+pulchritude | ˈpʌlkrɪtjuːd | noun literary
+beauty: the irresistible pulchritude of her friend.
+
+purloin | pəːˈlɔɪn | verb formal, or humorous
+steal (something): he must have managed to purloin a copy of the key.
+
+pyrrhic | ˈpɪrɪk | adjective
+(of a victory) won at too great a cost to have been worthwhile for the victor: the best they can hope for is a pyrrhic victory | there is concern that this legal victory for the record labels may prove pyrrhic.
+
+qua | kweɪ | conjunction formal
+in the capacity of; as being: shareholders qua members may be under obligations to the company.
+
+quale | ˈkweɪli | noun (plural qualia) Philosophy
+a quality or property as perceived or experienced by a person: in a different world, I could have the qualia of ‘red’ when looking at the sky (but would continue to label it as ‘blue’).
+
+qualm | kwɑːm | noun
+an uneasy feeling of doubt, worry, or fear, especially about one's own conduct; a misgiving: military regimes generally have no qualms about controlling the press.
+
+quango | ˈkwaŋɡəʊ | noun British, mainly derogatory
+a semi-public administrative body outside the civil service but receiving financial support from the government, which makes senior appointments to it.
+
+quell | kwɛl | verb
+put an end to (a rebellion or other disorder), typically by the use of force: extra police were called to quell the disturbance.
+• subdue or silence (someone): Connor quelled him with a look.
+• suppress (a feeling): she quelled an urge to race up the stairs.
+
+quiescence | kwɪˈɛsns | noun
+inactivity or dormancy: this method has been shown to induce sleep-like quiescence in adult animals.
+
+quietus | kwʌɪˈiːtəs | noun
+literary death or something that causes death, regarded as a release from life.
+• archaic something that has a calming or soothing effect.
+
+quisling | ˈkwɪzlɪŋ | noun
+a traitor who collaborates with an enemy force occupying their country: he had the Quisling owner of the factory arrested.
+
+quo vadis | ˌkwəʊ ˈvɑːdɪs | phrase literary
+where are you going? (typically used to enquire about the aims or likely future of a person, organization, etc.): quo vadis education in the era of artificial intelligence?
+
+quondam | ˈkwɒndam | adjective
+that once was; former: quondam dissidents joined the establishment.
+
+quotidian | kwɒˈtɪdɪən | adjective
+1. of or occurring every day; daily: the car sped noisily off through the quotidian traffic.
+• ordinary or everyday; mundane: his story is an achingly human one, mired in quotidian details.
+
+raconteur | ˌrakɒnˈtəː | noun
+a person who tells anecdotes in a skilful and amusing way: a colourful raconteur.
+
+rakish | ˈreɪkɪʃ | adjective
+1. having or displaying a dashing, jaunty, or slightly disreputable quality or appearance: he had a rakish, debonair look.
+
+rampant | ˈramp(ə)nt | adjective
+2. Heraldry (of an animal) represented standing on one hind foot with its forefeet in the air (typically in profile, facing the dexter side, with right hind foot and tail raised): two gold lions rampant.
+
+rapacious | rəˈpeɪʃəs | adjective
+aggressively greedy or grasping: rapacious landlords.
+
+ratiocinate | ˌratɪˈɒsɪneɪt | verb formal
+form judgements by a process of logic; reason: a tendency to ratiocinate in isolation.
+
+rebarbative | rɪˈbɑːbətɪv | adjective formal
+unattractive and objectionable: rebarbative modern buildings.
+
+recalcitrant | rɪˈkalsɪtr(ə)nt | adjective
+having an obstinately uncooperative attitude towards authority or discipline: a class of recalcitrant fifteen-year-olds.
+
+recapitulate | ˌriːkəˈpɪtʃʊleɪt | verb
+summarize and state again the main points of: he began to recapitulate his argument with care.
+
+recidivism | rɪˈsɪdɪvɪz(ə)m | noun
+the tendency of a convicted criminal to reoffend: the prison has succeeded in reducing recidivism.
+
+recondite | ˈrɛk(ə)ndʌɪt | adjective
+(of a subject or knowledge) little known; abstruse: the book is full of recondite information.
+
+recumbent | rɪˈkʌmb(ə)nt | adjective
+(especially of a person or effigy) lying down: recumbent statues.
+
+redolent | ˈrɛdələnt | adjective
+1. strongly reminiscent or suggestive of: names redolent of history and tradition.
+• literary strongly smelling of: the church was old, dark, and redolent of incense.
+
+redoubt | rɪˈdaʊt | noun Military
+a temporary or supplementary fortification, typically square or polygonal and without flanking defences: the British stormed the rebel redoubt.
+
+redoubtable | rɪˈdaʊtəbl | adjective often humorous
+(of a person) formidable, especially as an opponent: he was a redoubtable debater | the redoubtable ladies.
+
+rejoinder | rɪˈdʒɔɪndə | noun
+a reply, especially a sharp or witty one: she would have made some cutting rejoinder but none came to mind.
+
+remediation | rɪmiːdɪˈeɪʃn | noun
+the action of remedying something, in particular of reversing or stopping environmental damage.
+
+remit | rɪˈmɪt | verb
+1. cancel or refrain from exacting or inflicting (a debt or punishment): the excess of the sentence over 12 months was remitted.
+
+renegade | ˈrɛnɪɡeɪd | noun
+a person who deserts and betrays an organization, country, or set of principles: an agent who later turns out to be a renegade.
+
+repine | rɪˈpʌɪn | verb literary
+feel or express discontent; fret: you mustn't let yourself repine.
+
+replete | rɪˈpliːt | adjective
+filled or well-supplied with something: sensational popular fiction, replete with adultery and sudden death.
+
+reprise | rɪˈpriːz | noun
+a repeated passage in music.
+• a repetition or further performance of something: a stale reprise of past polemic.
+
+repudiation | rɪˌpjuːdɪˈeɪʃn | noun
+1. rejection of a proposal or idea: his current position implies a repudiation of his earlier expressed views.
+
+retcon | ˈrɛtkɒn | noun
+(in a film, television series, or other fictional work) a piece of new information that imposes a different interpretation on previously described events, typically used to facilitate a dramatic plot shift or account for an inconsistency: we're given a retcon for Wilf's absence from Donna's wedding in ‘The Runaway Bride’: he had Spanish Flu.
+
+revanchism | rɪˈvan(t)ʃɪz(ə)m | noun
+a policy of seeking to retaliate, especially to recover lost territory: a recipe for deep future resentment, revanchism and renewed conflict.
+
+rhapsodise | ˈrapsədʌɪz | verb
+speak or write about someone or something with great enthusiasm and delight: he began to rhapsodise about Gaby's beauty and charm.
+
+rictus | ˈrɪktəs | noun
+a fixed grimace or grin: their faces were each frozen in a terrified rictus.
+
+rill | rɪl | noun
+a small stream.
+
+riparian | rʌɪˈpɛːriən | adjective
+Ecology relating to wetlands adjacent to rivers and streams: the ranch's most expansive riparian habitat.
+
+risible | ˈrɪzɪbl | adjective
+provoking laughter through being ludicrous: a risible scene of lovemaking in a tent.
+
+rive | rʌɪv | verb
+literary split or tear apart violently: the party was riven by disagreements over Europe | figurative : he was riven with guilt.
+
+roan1 | rəʊn | adjective
+denoting an animal, especially a horse or cow, having a coat of a main colour thickly interspersed with hairs of another colour, typically bay, chestnut, or black mixed with white: the roan mare whinnied and stamped its hoofs.
+
+roman-à-clef | ˌrəʊmɒ̃ɑːˈkleɪ | noun
+a novel in which real people or events appear with invented names.
+
+roundel | ˈraʊndl | noun
+1. a small disc, especially a decorative medallion.
+• a circular identifying mark painted on military aircraft, as, for example, the red, white, and blue of the RAF.
+2. a short poem consisting of three stanzas of three lines each, rhyming alternately, with the opening words repeated as a refrain after the first and third stanzas. The form, a variant of the rondeau, was developed by Swinburne.
+
+rube | ruːb | noun North American English informal
+a country bumpkin: quintessentially rube names.
+
+Rube Goldberg | ruːb ˈɡəʊl(d)bəːɡ | adjective North American English
+ingeniously or unnecessarily complicated in design or construction: a Rube Goldberg machine.
+
+ruminant | ˈruːmɪnənt | noun
+1. an even-toed ungulate mammal that chews the cud regurgitated from its rumen. The ruminants comprise the cattle, sheep, antelopes, deer, giraffes, and their relatives.
+2. a contemplative person; a person given to meditation: he was destined to become a ruminant, a haunter of libraries.
+
+rut 2 | rʌt | noun
+an annual period of sexual activity in deer and some other mammals, during which the males fight each other for access to the females: a moose in rut.
+
+sagacious | səˈɡeɪʃəs | adjective
+having or showing keen mental discernment and good judgement; wise or shrewd: they were sagacious enough to avoid any outright confrontation.
+
+salubrious | səˈl(j)uːbrɪəs | adjective
+health-giving; healthy: odours of far less salubrious origin.
+• (of a place) pleasant; not run-down: an over-priced flat in a none too salubrious area.
+
+salutary | ˈsaljʊt(ə)ri | adjective
+(especially with reference to something unwelcome or unpleasant) producing good effects; beneficial: it failed to draw salutary lessons from Britain's loss of its colonies.
+
+samizdat | ˈsamɪzdat | noun
+the clandestine copying and distribution of literature banned by the state, especially formerly in the communist countries of eastern Europe: a samizdat newsletter.
+
+sanguine | ˈsaŋɡwɪn | adjective
+1. optimistic or positive, especially in an apparently bad or difficult situation: he is sanguine about prospects for the global economy | the committee takes a more sanguine view.
+
+sartorial | sɑːˈtɔːrɪəl | adjective
+relating to tailoring, clothes, or style of dress: sartorial elegance.
+
+Saturnalia | ˌsatəˈneɪlɪə | noun
+the ancient Roman festival of Saturn in December, a period of general merrymaking and the predecessor of Christmas.
+• (saturnalia) an occasion of wild revelry or indulgence: a saturnalia of shopping.
+
+scabrous | ˈskeɪbrəs | adjective
+2. indecent; salacious: scabrous details included being regularly seen with a mistress.
+
+scalar | ˈskeɪlə | adjective Mathematics, Physics
+(of a quantity) having only magnitude, not direction.
+
+scansion | ˈskanʃn | noun
+the action of scanning a line of verse to determine its rhythm: the verse defies easy scansion.
+• the rhythm of a line of verse: triple scansion.
+
+schism | ˈsɪz(ə)m | noun
+a split or division between strongly opposed sections or parties, caused by differences in opinion or belief: the widening schism between Church leaders and politicians.
+
+schizoid | ˈskɪtsɔɪd | adjective
+1. Psychiatry denoting or having a personality type characterized by emotional aloofness and solitary habits.
+
+scoria | ˈskɔːrɪə | noun
+1. basaltic lava ejected as fragments from a volcano, typically with a frothy texture: chunks of black scoria | the village lay half silted up under black scoriae and dust.
+
+screed | skriːd | noun
+1. a long speech or piece of writing, typically one regarded as tedious: her criticism appeared in the form of screeds in a local film magazine.
+
+scud1 | skʌd | verb
+1. [no object, with adverbial of direction] move fast in a straight line because or as if driven by the wind: we lie watching the clouds scudding across the sky.
+
+secular | ˈsɛkjʊlə | adjective
+1. not connected with religious or spiritual matters. Contrasted with sacred: secular buildings | secular attitudes to death.
+
+sedition | sɪˈdɪʃn | noun
+conduct or speech inciting people to rebel against the authority of a state or monarch.
+
+senescence | sɪˈnɛsns | noun Biology
+the condition or process of deterioration with age.
+
+sensate | ˈsɛnseɪt | adjective
+perceiving or perceived by the senses: the sensate world.
+
+sententious | sɛnˈtɛnʃəs | adjective
+given to moralizing in a pompous or affected manner: he tried to encourage his men with sententious rhetoric.
+
+sepulchral | sɪˈpʌlkr(ə)l | adjective
+relating to a tomb or interment: sepulchral monuments.
+• gloomy; dismal: a speech delivered in sepulchral tones.
+
+sequela | sɪˈkwiːlə | noun Medicine
+a condition which is the consequence of a previous disease or injury: the long-term sequelae of infection.
+
+sequestrate | ˈsiːkwəstreɪt | verb
+take legal possession of (assets) until a debt has been paid or other claims have been met: the power of courts to sequestrate the assets of unions.
+
+serf | səːf | noun historical
+an agricultural labourer bound by the feudal system who was tied to working on their lord's estate.
+
+serried | ˈsɛrɪd | adjective
+(of rows of people or things) standing close together: serried ranks of soldiers | the serried rows of vines.
+
+shibboleth | ˈʃɪbəlɛθ | noun
+a custom, principle, or belief distinguishing a particular class or group of people, especially a long-standing one regarded as outmoded or no longer important: old taboos and shibboleths.
+
+shindy | ˈʃɪndi | noun informal
+a noisy disturbance or quarrel: there were plenty of gulls kicking up a shindy.
+• a large, lively party.
+
+shiplap | ˈʃɪplap | verb
+fit (boards) together so that each overlaps the one below: I shiplapped the boards and then glued and screwed them to the braces.
+
+simony | ˈsɪməni | noun mainly historical
+the buying or selling of ecclesiastical privileges, for example pardons or benefices.
+
+sinecure | ˈsɪnɪkjʊə | noun
+a position requiring little or no work but giving the holder status or financial benefit: political sinecures for the supporters of ministers.
+
+sire | ˈsʌɪə | noun
+1. the male parent of an animal, especially a stallion or bull kept for breeding: the sire is one of the country's top thoroughbred stallions.
+
+skeins | skeɪn | noun
+1. a length of thread or yarn, loosely coiled and knotted.
+• an element that forms part of a complex or complicated whole: he weaves together the skeins of philosophy, ecology, folklore, and history.
+2. a flock of wild geese or swans in flight, typically in a V-shaped formation.
+
+slake | sleɪk | verb
+1. quench or satisfy (one's thirst): slake your thirst with citron pressé.
+• satisfy (desires): restaurants worked to slake the Italian obsession with food.
+
+slough 1 | slaʊ | noun
+2. a situation characterized by lack of progress or activity: the economic slough of the interwar years.
+slough 2 | slʌf | verb
+1. (usually slough something off) shed or remove (a layer of dead skin): a snake sloughs off its old skin | exfoliate once a week to slough off any dry skin.
+
+smock | smɒk | noun
+a dress or top for a woman or girl, gathered at the chest and having a loosely fitting lower part.
+• a loose overall worn to protect one's clothes: an artist's smock.
+
+snit | snɪt | noun North American English informal
+a fit of irritation; a sulk: the ambassador and delegation had withdrawn in a snit.
+
+sobriquet | ˈsəʊbrɪkeɪ | noun
+a person's nickname: she was a vast and haughty person who answered to the sobriquet ‘Duchesse’.
+
+sod 1 | sɒd | noun
+the surface of the ground, with the grass growing on it; turf: underneath the sod was a layer of humus.
+
+sodality | sə(ʊ)ˈdalɪti | noun
+a confraternity or association, especially a Roman Catholic religious guild or brotherhood.
+
+sojourn | ˈsɒdʒən | noun formal
+a temporary stay: her sojourn in Rome.
+
+solecism | ˈsɒlɪsɪz(ə)m | noun
+a grammatical mistake in speech or writing.
+• a breach of good manners; an instance of incorrect behaviour.
+
+solicitous | səˈlɪsɪtəs | adjective
+characterised by or showing interest or concern: she was always solicitous about the welfare of her students | a solicitous enquiry.
+
+solipsism | ˈsɒlɪpsɪz(ə)m | noun
+1. the quality of being very self-centred or selfish: she herself elicits scant sympathy, such is her solipsism and lack of self-awareness.
+
+somatic | səˈmatɪk | adjective
+relating to the body, especially as distinct from the mind: patients completed a questionnaire about their somatic and psychological symptoms.
+
+somnolent | ˈsɒmnələnt | adjective
+sleepy; drowsy.
+
+sop | sɒp | noun
+1. a thing of no great value given or done as a concession to appease someone whose main concerns or demands are not being met: my agent telephones as a sop but never finds me work.
+
+sophistry | ˈsɒfɪstri | noun
+the use of clever but false arguments, especially with the intention of deceiving: trying to argue that I had benefited in any way from the disaster was pure sophistry.
+
+sot | sɒt | noun
+a habitual drunkard.
+
+spall | spɔːl | verb
+break (ore, rock, or stone) into smaller pieces, especially in preparation for sorting: the ore was spalled by young women seated at anvils.
+
+specious | ˈspiːʃəs | adjective
+superficially plausible, but actually wrong: a specious argument.
+
+sprezzatura | ˌsprɛtsəˈt(j)ʊərə | noun
+studied carelessness, especially as a characteristic quality or style of art or literature: Rubens' famous sprezzatura | it takes enviable sprezzatura and self-confidence to perform as a teacher of literature.
+
+spurious | ˈspjʊərɪəs | adjective
+not being what it purports to be; false or fake: separating authentic and spurious claims.
+
+stem-winder | stĕm′wīn″dər | noun US English
+1. informal an entertaining and rousing speech: a stem-winder of a speech.
+
+stentorian | stɛnˈtɔːrɪən | adjective
+(of a person's voice) loud and powerful: a stentorian roar.
+
+stochastic | stəˈkastɪk | adjective technical
+having a random probability distribution or pattern that may be analysed statistically but may not be predicted precisely.
+
+stolid | ˈstɒlɪd | adjective
+calm, dependable, and showing little emotion or animation: a stolid bourgeois gent.
+
+straphanger | ˈstraphaŋə | noun informal
+a standing passenger in a bus or train: the straphangers were swaying unsteadily.
+
+strident | ˈstrʌɪdnt | adjective
+2. presenting a point of view, especially a controversial one, in an excessively forceful way: public pronouncements on the crisis became less strident.
+
+strop 1 | strɒp | noun
+a device, typically a strip of leather, for sharpening razors.
+
+stucco | ˈstʌkəʊ | noun
+fine plaster used for coating wall surfaces or moulding into architectural decorations: a shabby house covered in crumbling stucco.
+
+stultify | ˈstʌltɪfʌɪ | verb
+1. cause to lose enthusiasm and initiative, especially as a result of a tedious or restrictive routine: he found ways of gently subverting the class system that stultified 1950s English society.
+
+subscale | ˈsʌbskeɪl | adjective
+of a smaller size than other things of a similar kind: there remain a lot of subscale businesses in the sector.
+
+sui generis | ˌs(j)uːʌɪ ˈdʒɛn(ə)rɪs | adjective
+unique: the sui generis nature of animals.
+
+sunder | ˈsʌndə | verb literary
+split apart: a universe sundered ages ago in a divine war.
+
+supercilious | ˌsuːpəˈsɪlɪəs | adjective
+behaving or looking as though one thinks one is superior to others: a supercilious lady's maid.
+
+supertitle | ˈsuːpəˌtʌɪtl | noun North American
+a caption projected on a screen above the stage in an opera, translating the text being sung. Also called surtitle.
+
+supplant | səˈplɑːnt | verb
+supersede and replace: domestic production has been supplanted by imports and jobs have been lost.
+
+surfeit | ˈsəːfɪt | noun
+an excessive amount of something: a surfeit of food and drink.
+
+surmount | səˈmaʊnt | verb
+1. overcome (a difficulty or obstacle): all manner of cultural differences were surmounted.
+2. stand or be placed on top of: the tomb was surmounted by a sculptured angel.
+
+susurration | ˌs(j)uːsəˈreɪʃn | (also susurrus | s(j)uːˈsʌrəs) | noun literary
+whispering or rustling: the susurration of the river.
+
+Svengali | svɛnˈɡɑːli | noun
+a person who exercises a controlling or mesmeric influence on another, especially for a sinister purpose.
+
+swarthy | ˈswɔːði | adjective
+dark-complexioned: swarthy men with gleaming teeth.
+
+swivet | ˈswɪvɪt | noun US English
+a fluster or panic: the incomprehensible did not throw him into a swivet.
+
+sylph | sɪlf | noun
+1. an imaginary spirit of the air.
+• a slender woman or girl: an oh-so-slim sylph dressed in a black leotard.
+
+syndicate | ˈsɪndɪkət | noun
+1. a group of individuals or organizations combined to promote a common interest: large-scale buyouts involving a syndicate of financial institutions | a crime syndicate.
+
+synodic | sɪˈnɒdɪk | adjective Astronomy
+relating to or involving the conjunction of stars, planets, or other celestial objects.
+
+tabard | ˈtabəd | noun
+a sleeveless jerkin consisting only of front and back pieces with a hole for the head: the caretaker with her pale blue nylon tabard on.
+
+tabor | ˈteɪbə | noun historical
+a small drum, especially one used simultaneously by the player of a simple pipe.
+
+tacit | ˈtasɪt | adjective
+understood or implied without being stated: your silence may be taken to mean tacit agreement.
+
+Tammany | ˈtaməni | (also Tammany Hall)
+(in the US) a powerful organization within the Democratic Party that was widely associated with corruption. Founded as a fraternal and benevolent society in 1789, it came to dominate political life in New York City in the 19th and early 20th centuries, before being reduced in power by Franklin D. Roosevelt in the early 1930s.
+
+taradiddle | ˈtarəˌdɪdl | noun informal
+a petty lie: no sane person would make up such a taradiddle.
+
+tarn | tɑːn | noun
+a small mountain lake: Malham Tarn.
+
+tenor2 | ˈtɛnə | noun
+1. the general meaning, sense, or content of something: the general tenor of the debate.
+
+terra firma | ˌtɛrə ˈfəːmə | noun
+dry land; the ground as distinct from the sea or air: they needed to rest themselves on terra firma.
+
+terra incognita | ɪnˈkɒɡnɪtə | noun
+unknown or unexplored territory: the traveller is moving now through terra incognita.
+
+thermocline | ˈθəːmə(ʊ)klʌɪn | noun
+an abrupt temperature gradient in a body of water such as a lake, marked by a layer above and below which the water is at different temperatures: this prevents mixing between the surface waters and those beneath the thermocline.
+
+thoroughgoing | ˈθʌrəˌɡəʊɪŋ | adjective
+involving or attending to every detail or aspect of something: a thoroughgoing reform of the whole economy.
+
+tifo | ˈtiːfəʊ | noun
+(especially at soccer games) a choreographed display in which fans in a sports stadium raise a large banner together or simultaneously hold up signs that together form a large image: the fans in Kansas City pulled off an impressive tifo of the USA flag.
+
+timorous | ˈtɪm(ə)rəs | adjective
+showing or suffering from nervousness or a lack of confidence: a timorous voice.
+
+tithe | tʌɪð | noun
+one tenth of annual produce or earnings, formerly taken as a tax for the support of the Church and clergy.
+
+topiary | ˈtəʊpɪəri | noun
+the art or practice of clipping shrubs or trees into ornamental shapes: [as modifier] : a specialist in topiary art.
+
+tract2 | trakt | noun
+a short treatise in pamphlet form, typically on a religious subject.
+
+traduce | trəˈdjuːs | verb
+speak badly of or tell lies about (someone) so as to damage their reputation: it was regarded as respectable political tactics to traduce him.
+
+tragicomic | ˌtradʒɪˈkɒmɪk | adjective
+(of a play or novel) containing elements of both comedy and tragedy: a tragicomic tale of a wealthy but lonely music lover.
+
+tranche | trɑːn(t)ʃ | noun
+a portion of something, especially money: they released the first tranche of the loan.
+
+transmogrify | trɑːnzˈmɒɡrɪfʌɪ | verb mainly humorous
+transform in a surprising or magical manner: his home was transmogrified into a hippy crash pad.
+
+transom | ˈtrans(ə)m | noun
+the flat surface forming the stern of a boat.
+- over the transom North American English informal — offered or sent without prior agreement; unsolicited: the editors receive about ten manuscripts a week over the transom.
+
+transpose | trɑːnˈspəʊz | verb
+1. cause (two or more things) to exchange places: the situation might have been the same if the parties in opposition and government had been transposed.
+
+trenchant | ˈtrɛ(t)ʃ(ə)nt | adjective
+1. vigorous or incisive in expression or style: the White Paper makes trenchant criticisms of health authorities.
+
+trice | trʌɪs | noun
+- in a trice — in a moment; very quickly: in a trice, she had flown up the stairs.
+
+troglodyte | ˈtrɒɡlədʌɪt | noun
+1. (especially in prehistoric times) a person who lived in a cave.
+	• a hermit.
+2. derogatory a person regarded as being ignorant and reactionary in their views: there might still be troglodytes in boardrooms who are unaware of climate change.
+
+troth | trəʊθ | noun
+1. archaic, or formal faith or loyalty when pledged in a solemn agreement or undertaking: a token of troth.
+
+trow | trəʊ | verb archaic
+think or believe: why, this is strange, I trow!.
+
+truculent | ˈtrʌkjʊlənt | adjective
+eager or quick to argue or fight; aggressively defiant: the truculent attitude of farmers to cheaper imports.
+
+truthiness | ˈtruːθinɪs | noun informal
+the quality of seeming or being felt to be true, even if not necessarily true.
+
+tureen | t(j)ʊˈriːn | noun
+a deep covered dish from which soup is served.
+
+turncoat | ˈtəːnkəʊt | noun derogatory
+a person who deserts one party or cause in order to join an opposing one: they denounced him as a turncoat.
+
+unalloyed | ˌʌnəˈlɔɪd | adjective
+2. (chiefly of emotions) complete and unreserved: unalloyed delight.
+
+unctuous | ˈʌŋ(k)tjʊəs | adjective
+1. excessively flattering or ingratiating; oily: he seemed anxious to please but not in an unctuous way.
+
+undergird | ˌʌndəˈɡəːd | verb
+secure or fasten from the underside, especially by a rope or chain passed underneath.
+
+unedifying | ʌnˈɛdɪfʌɪɪŋ | adjective
+(especially of an event taking place in public) distasteful; unpleasant: the unedifying sight of the two leaders screeching conflicting proposals.
+
+ungulate | ˈʌŋɡjʊlət | noun Zoology
+a hoofed mammal.
+
+unlettered | ʌnˈlɛtəd | adjective
+(of a person) poorly educated or illiterate.
+
+unprepossessing | ˌʌnpriːpəˈzɛsɪŋ | adjective
+not attractive or appealing to the eye: despite his unprepossessing appearance he had an animal magnetism.
+
+unregenerate | ʌnrɪˈdʒɛn(ə)rət | adjective
+not reforming or showing repentance; obstinately wrong or bad: the most unregenerate and irredeemable people you could ever imagine.
+
+unshod | ʌnˈʃɒd | adjective
+not wearing shoes: her unshod feet.
+
+urbane | əːˈbeɪn | adjective
+courteous and refined in manner (typically used of a man): the supposedly urbane, restrained English gentleman | urbane wit was the mark of taste and cultivation.
+
+usury | ˈjuːʒ(ə)ri | noun
+the action or practice of lending money at unreasonably high rates of interest: the medieval prohibition on usury.
+
+vacillating | ˈvasɪleɪtɪŋ | adjective
+wavering between different opinions or actions; irresolute: he was accused of vacillating leadership.
+
+vagary | ˈveɪɡ(ə)ri | noun
+an unexpected and inexplicable change in a situation or in someone's behaviour: the vagaries of the weather.
+
+valorise | ˈvalərʌɪz | verb
+give or ascribe value or validity to: the culture valorises the individual.
+• raise or fix the price or value of (a commodity or currency) by artificial means, especially by government action.
+
+vainglorious | veɪnˈɡlɔːrɪəs | adjective literary
+excessively proud of oneself or one's achievements; overly vain: this vainglorious boast of personal infallibility. 
+
+vanitas | ˈvanɪtɑːs | noun
+a still-life painting of a 17th-century Dutch genre containing symbols of death or change as a reminder of their inevitability.
+
+varmint | ˈvɑːmɪnt | noun
+a troublesome wild animal.
+
+vassal | ˈvasl | noun historical
+a holder of land by feudal tenure on conditions of homage and allegiance.
+• a person or country in a subordinate position to another: a vassal state of the Ottoman Empire.
+
+vaunt | vɔːnt | verb
+boast about or praise (something), especially excessively: he was initially vaunted by the West for his leadership of the country.
+
+venal | ˈviːnl | adjective
+showing or motivated by susceptibility to bribery; corrupt: local customs officers are notoriously venal.
+
+venerable | ˈvɛn(ə)rəbl | adjective
+accorded a great deal of respect, especially because of age, wisdom, or character: a venerable statesman.
+
+veracity | vɪˈrasɪti | noun
+conformity to facts; accuracy: officials expressed doubts concerning the veracity of the story.
+
+verisimilitude | ˌvɛrɪsɪˈmɪlɪtjuːd | noun
+the appearance of being true or real: the detail gives the novel some verisimilitude.
+
+vestigial | vɛˈstɪdʒɪəl | adjective
+1. forming a very small remnant of something that was once greater or more noticeable: he felt a vestigial flicker of anger from last night.
+
+vicissitude | vɪˈsɪsɪtjuːd | noun
+1. a change of circumstances or fortune, typically one that is unwelcome or unpleasant: her husband's sharp vicissitudes of fortune.
+
+victual | ˈvɪtl | noun archaic
+food or provisions: turkey and other savoury victuals were served.
+
+viscera | ˈvɪs(ə)rə | plural noun (singular viscus)
+the internal organs in the main cavities of the body, especially those in the abdomen, e.g. the intestines.
+
+vitiate | ˈvɪʃɪeɪt | verb formal
+spoil or impair the quality or efficiency of: development programmes have been vitiated by the rise in population.
+
+vitrify | ˈvɪtrɪfʌɪ | verb
+convert (something) into glass or a glasslike substance, typically by exposure to heat: the option of vitrifying nuclear waste presents problems.
+
+vituperative | vʌɪˈtjuːp(ə)rətɪv | adjective
+bitter and abusive: a vituperative outburst.
+
+volition | vəˈlɪʃn | noun
+the faculty or power of using one's will: without conscious volition she backed into her office.
+
+voluble | ˈvɒljʊbl | adjective
+(of a person) talking fluently, readily, or incessantly: a voluble game-show host.
+
+votary | ˈvəʊtəri | noun
+a person, such as a monk or nun, who has made vows of dedication to religious service.
+• a devoted follower, adherent, or advocate of someone or something: he was a votary of John Keats.
+
+waggish | ˈwaɡɪʃ | adjective dated
+humorous in a playful, mischievous, or facetious manner: a waggish riposte.
+
+wallow | ˈwɒləʊ | verb
+2. (wallow in) (of a person) indulge in an unrestrained way in (something that one finds pleasurable): I was wallowing in the luxury of the hotel | he had been wallowing in self-pity.
+
+warren | ˈwɒrən | noun
+a network of interconnecting rabbit burrows.
+• a densely populated or labyrinthine building or district: a warren of narrow gas-lit streets.
+
+wheedle | ˈwiːdl | verb
+use flattery or coaxing in order to persuade someone to do something or give one something: she wheedled her way on to the guest list.
+
+whittle | ˈwɪtl | verb
+1. carve (wood) into an object by repeatedly cutting small slices from it: he was sitting at the tent door, whittling a piece of wood with a knife.
+• carve (an object) from wood: a set of chess pieces he had whittled himself.
+2. (whittle something away/down) reduce something in size, amount, or extent by a gradual series of steps: the shortlist of fifteen was whittled down to five.
+
+wile | wʌɪl | noun
+devious or cunning stratagems employed in manipulating or persuading someone to do what one wants: she didn't employ any feminine wiles to capture his attention.
+
+windward | ˈwɪndwəd | adjective
+facing the wind or situated on the side facing the wind: the windward side of the boat. Contrasted with leeward.
+
+wiseacre | ˈwʌɪzˌeɪkə | noun North American English informal, derogatory
+a person who pretends to have wisdom or knowledge, regarded with scorn or irritation by others; a know-all: the wiseacres forecast a collapse of the building.
+
+woebegone | ˈwəʊbɪɡɒn | adjective
+sad or miserable in appearance: don't look so woebegone, Joanna.
+
+wonk | wɒŋk | noun North American English informal
+a person who takes an enthusiastic or excessive interest in the specialized details of a particular subject or field, especially political policy: budget wonks will tell you that these projections are driven by unreliable economic assumptions.
+• derogatory a studious or hard-working person: any kid with an interest in science was a wonk.
+
+wuthering | ˈwʌðərɪŋ | adjective mainly Northern England
+(of weather) characterized by strong winds: it's a wuthering day on the moors today | the wuthering wind blows.
+
+yeoman | ˈjəʊmən | noun
+1. historical a man holding and cultivating a small landed estate; a freeholder.
+`;
+
+/* ---------- parsing ---------- */
+const POS_RE = /^(plural noun|noun|verb|adjective|adverb|preposition|conjunction|pronoun|phrase|exclamation|determiner|abbreviation)\b/i;
+const POS_IN = /^(.*?)\s+(plural noun|noun|verb|adjective|adverb|preposition|conjunction|pronoun|phrase)\b(.*)$/i;
+function splitDef(t){
+  t = t.trim();
+  let lead = '';
+  let m = t.match(/^(noun|verb|adjective|adverb):\s+(.*)$/);
+  if(m){ lead = m[1]; t = m[2]; }
+  else if((m = t.match(/^(.{1,70}?) — (.+)$/)) && !/: /.test(m[1])){ lead = m[1]; t = m[2]; }
+  const i = t.indexOf(': ');
+  return i > -1 ? {lead, def:t.slice(0,i).trim(), ex:t.slice(i+2).trim()} : {lead, def:t, ex:''};
+}
+function isHeader(l){
+  if(!l.includes(' | ') || /^(\d+\.|[•\-*])/.test(l)) return false;
+  const first = l.split(' | ')[0];
+  return first.length <= 40 && !/[:.]/.test(first);
+}
+function parseHeader(l){
+  const t = l.split(' | ').map(s => s.trim());
+  const word = t[0].replace(/(?<=[a-z])\s*\d+$/i, '');
+  const rest = t.slice(1).join(' | ').replace(/\((?:also|plural|singular)(?:[^()]|\([^()]*\))*\)/gi, '').replace(/\s+/g,' ').trim();
+  let pieces = rest.split('|').map(s => s.trim()).filter(Boolean);
+  let pron = '', pos = '', reg = '';
+  if(pieces.length === 1 && !POS_RE.test(pieces[0])){
+    const m = pieces[0].match(POS_IN);
+    if(m){ pron = m[1]; pieces = [m[2] + m[3]]; } else { pron = pieces[0]; pieces = []; }
+  } else if(pieces.length && !POS_RE.test(pieces[0])){
+    pron = pieces.shift();
+  }
+  if(pieces.length){
+    const last = pieces[pieces.length-1];
+    const m = last.match(POS_RE);
+    if(m){
+      pos = m[1].toLowerCase();
+      reg = pieces.slice(0,-1).concat(last.slice(m[0].length).trim()).filter(Boolean).join(' ').trim();
+    } else {
+      reg = pieces.join(' ');
+    }
+  }
+  return {word, pron, pos, reg};
+}
+function parse(raw){
+  const entries = [];
+  let e = null;
+  for(let l of raw.split('\n')){
+    l = l.trim();
+    if(!l) continue;
+    if(isHeader(l)){
+      e = {...parseHeader(l), senses: [], numbered: false};
+      entries.push(e);
+      continue;
+    }
+    if(!e) continue;
+    const b = l.match(/^[•\-*]\s*(.*)$/);
+    if(b){
+      const d = splitDef(b[1]);
+      const s = e.senses[e.senses.length-1];
+      if(s) s.alts.push(d); else e.senses.push({...d, alts: []});
+    } else {
+      if(/^\d+\.\s/.test(l)) e.numbered = true;
+      e.senses.push({...splitDef(l.replace(/^\d+\.\s*/,'')), alts: []});
+    }
+  }
+  const seen = new Map();
+  for(const x of entries){
+    if(!x.senses.length) continue;
+    if(!x.pos){
+      const leads = [...new Set(x.senses.map(s => s.lead).filter(v => /^(noun|verb|adjective|adverb)$/.test(v)))];
+      if(leads.length) x.pos = leads.join(' / ');
+    }
+    const k = x.word.toLowerCase() + '|' + x.pron;
+    const size = x.senses.reduce((n,s) => n + 1 + s.alts.length, 0);
+    const old = seen.get(k);
+    if(!old || size >= old.size) seen.set(k, {x, size});
+  }
+  return [...seen.values()].map(v => v.x);
+}
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => s.replace(/(\w)'/g, '$1\u2019').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = s => { s = s.trim(); s = s.charAt(0).toUpperCase() + s.slice(1); return /[.!?]$/.test(s) ? s : s + '.'; };
+const rnd = a => a[Math.floor(Math.random()*a.length)];
+function shuffle(a){ a = a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+/* Treat pronunciation as media playback so it ignores the silent switch (iOS) */
+let silentEl = null;
+function unlockAudio(){
+  try{ if(navigator.audioSession) navigator.audioSession.type = 'playback'; }catch(e){}
+  try{
+    if(!silentEl){
+      const n = 800, b = new Uint8Array(44 + n), v = new DataView(b.buffer);
+      const w = (o,s) => { for(let i=0;i<s.length;i++) b[o+i] = s.charCodeAt(i); };
+      w(0,'RIFF'); v.setUint32(4,36+n,true); w(8,'WAVEfmt '); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+      v.setUint32(24,8000,true); v.setUint32(28,8000,true); v.setUint16(32,1,true); v.setUint16(34,8,true); w(36,'data'); v.setUint32(40,n,true);
+      b.fill(128,44);
+      let s = ''; for(let i=0;i<b.length;i++) s += String.fromCharCode(b[i]);
+      silentEl = new Audio('data:audio/wav;base64,' + btoa(s));
+    }
+    silentEl.play().catch(() => {});
+  }catch(e){}
+}
+function speak(w){
+  unlockAudio();
+  try{ speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(w); u.lang='en-GB'; u.rate=.85; speechSynthesis.speak(u); }catch(e){}
+}
+
+/* ---------- game ---------- */
+const DECK = parse(RAW);
+let cur = null, last = null, answered = false, streak = 0, best = 0, options = [], angle = 0;
+try{ best = +localStorage.getItem('wordflip-best') || 0; }catch(e){}
+
+function renderScore(){ $('#streak').textContent = streak; $('#best').textContent = best; }
+
+const micSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+
+function renderRound(deferBack){
+  answered = false;
+  const pool = DECK.filter(e => e !== last);
+  cur = rnd(pool.length ? pool : DECK);
+  last = cur;
+  const sense = rnd(cur.senses);
+  const others = shuffle(DECK.filter(e => e.word.toLowerCase() !== cur.word.toLowerCase())).slice(0,2).map(e => ({t: rnd(e.senses).def, ok:false}));
+  options = shuffle([{t: sense.def, ok:true}, ...others]);
+
+  const reg = cur.reg ? `<span class="reg">${esc(cur.reg)}</span>` : '';
+  $('#front').innerHTML =
+    `<h1 class="word">${esc(cur.word)}</h1>
+     <div class="meta">${cur.pos ? `<em>${esc(cur.pos)}</em>` : ''}${reg}${cur.pron ? `<span>${esc(cur.pron)}</span>` : ''}
+     <button class="mic" id="mic" aria-label="Play pronunciation" title="Play pronunciation">${micSvg}</button></div>`;
+  $('#mic').onclick = () => speak(cur.word);
+
+  const sensesHtml = cur.senses.map((s,i) => {
+    const num = cur.numbered && cur.senses.length > 1 ? `<span class="n">${i+1}.</span>` : '';
+    const ld = x => x.lead ? `<span class="lead">${esc(x.lead)}</span> — ` : '';
+    const ex = x => x.ex ? ` <i>${esc(fmt(x.ex))}</i>` : '';
+    const alts = s.alts.map(a => `<div class="alt">${ld(a)}${esc(fmt(a.def))}${ex(a)}</div>`).join('');
+    return `<li>${num}${ld(s)}${esc(fmt(s.def))}${ex(s)}${alts}</li>`;
+  }).join('');
+  const backHtml =
+    `<h2>${esc(cur.word)}<small>${[cur.pron, [cur.pos, cur.reg].filter(Boolean).join(' ')].filter(Boolean).map(esc).join(' · ')}</small></h2>
+     <ul class="senses">${sensesHtml}</ul>`;
+  if(deferBack) setTimeout(() => { $('#back').innerHTML = backHtml; }, 450);
+  else $('#back').innerHTML = backHtml;
+
+  const box = $('#choices');
+  box.innerHTML = '';
+  options.forEach((o,i) => {
+    const b = document.createElement('button');
+    b.className = 'choice glass';
+    b.textContent = fmt(o.t);
+    b.onclick = () => answer(i);
+    box.appendChild(b);
+  });
+  $('#next').classList.remove('show');
+}
+
+function answer(i){
+  if(answered) return;
+  answered = true;
+  const btns = [...document.querySelectorAll('.choice')];
+  const right = options[i].ok;
+  btns.forEach(b => { b.disabled = true; });
+  btns[i].classList.add(right ? 'correct' : 'wrong');
+  if(!right){
+    setTimeout(() => btns[options.findIndex(o => o.ok)].classList.add('correct'), 450);
+    btns.forEach((b,k) => { if(k !== i && !options[k].ok) b.classList.add('dim'); });
+    streak = 0;
+  } else {
+    streak++;
+    btns.forEach((b,k) => { if(k !== i) b.classList.add('dim'); });
+    if(streak > best){ best = streak; try{ localStorage.setItem('wordflip-best', best); }catch(e){} }
+  }
+  renderScore();
+  setTimeout(() => {
+    try{ window.scrollTo({top:0, behavior:'smooth'}); }catch(e){ window.scrollTo(0,0); }
+    angle += 180; $('#card').style.transform = `rotateY(${angle}deg)`;
+  }, 650);
+  setTimeout(() => $('#next').classList.add('show'), 1000);
+}
+
+function next(){
+  if(!answered) return;
+  $('#next').classList.remove('show');
+  try{ window.scrollTo({top:0, behavior:'smooth'}); }catch(e){ window.scrollTo(0,0); }
+  angle += 180;
+  $('#card').style.transform = `rotateY(${angle}deg)`;
+  renderRound(true);
+}
+$('#next').onclick = next;
+document.addEventListener('keydown', e => {
+  if(e.key >= '1' && e.key <= '3') answer(+e.key - 1);
+  else if(answered && (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight')){ e.preventDefault(); next(); }
+});
+
+/* swipe right-to-left = next word (only after answering) */
+let tx = 0, ty = 0;
+document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, {passive:true});
+document.addEventListener('touchend', e => {
+  if(!answered) return;
+  const dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty;
+  if(dx < -60 && Math.abs(dx) > Math.abs(dy) * 1.5) next();
+}, {passive:true});
+
+if(DECK.length < 3){
+  $('#front').innerHTML = '<p class="meta">Add at least three words to the list to play.</p>';
+} else {
+  renderScore();
+  renderRound();
+}
+</script>
+</body>
+</html>
