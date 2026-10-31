@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Word Flip</title>
+<meta name="theme-color" content="#0a0c14">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -21,16 +22,16 @@
   --display:'Fraunces',Georgia,'Times New Roman',serif;
   --ui:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
 }
-html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+html{background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
 *,*::before,*::after{box-sizing:inherit}
-body{
-  margin:0;min-height:100%;color:var(--text);font-family:var(--ui);
+body{margin:0;min-height:100%;color:var(--text);font-family:var(--ui)}
+body::before{
+  content:"";position:fixed;top:0;left:0;width:100%;height:100%;height:100lvh;z-index:-1;pointer-events:none;
   background:
     radial-gradient(600px 420px at 12% 8%,rgba(92,120,255,.35),transparent 70%),
     radial-gradient(560px 460px at 92% 28%,rgba(190,90,255,.26),transparent 70%),
     radial-gradient(700px 520px at 50% 105%,rgba(30,190,200,.22),transparent 70%),
     var(--bg);
-  background-attachment:fixed;
 }
 .glass{
   background:var(--glass);
@@ -71,6 +72,7 @@ header b{color:var(--text);font-weight:600}
 .senses .alt::before{content:"•";position:absolute;left:4px;color:var(--accent)}
 .senses i{color:var(--muted)}
 .senses .lead{font-style:italic;color:var(--accent)}
+.senses .dl{font-style:italic;color:#c4c9dd}
 
 .choices{display:flex;flex-direction:column;gap:12px}
 .choice{
@@ -2604,6 +2606,34 @@ function parse(raw){
 const $ = s => document.querySelector(s);
 const esc = s => s.replace(/(\w)'/g, '$1\u2019').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt = s => { s = s.trim(); s = s.charAt(0).toUpperCase() + s.slice(1); return /[.!?]$/.test(s) ? s : s + '.'; };
+
+/* italicise leading descriptors such as "Medicine", "informal", "archaic or literary" */
+const LBL = new Set(['informal','formal','archaic','literary','derogatory','historical','humorous','rare','dated','technical','mainly','chiefly','often','medicine','philosophy','heraldry','mathematics','physics','psychiatry','zoology','biology','economics','law','music','sailing','grammar','linguistics','physiology','surgery','astronomy','geology','ecology','psychology']);
+const MODS = new Set(['mainly','chiefly','often']);
+function splitLabel(d){
+  const rg = d.match(/^(British|North American|US|American) English\b/);
+  if(rg) return {label: rg[0], rest: d.slice(rg[0].length).trim()};
+  const w = d.split(' ');
+  const norm = x => x.toLowerCase().replace(/,$/, '');
+  let i = 0, real = false;
+  while(i < w.length){
+    const t = norm(w[i]);
+    if((t === 'or' || t === 'and') && i > 0 && i + 1 < w.length && LBL.has(norm(w[i+1]))){ i++; continue; }
+    if(!LBL.has(t)) break;
+    if(!MODS.has(t)) real = true;
+    i++;
+  }
+  if(!real || i >= w.length) return {label: '', rest: d};
+  return {label: w.slice(0, i).join(' ').replace(/,$/, ''), rest: w.slice(i).join(' ')};
+}
+function plain(d){ const s = splitLabel(d.trim()); return s.label ? s.rest : d; }
+function dh(d){
+  d = d.trim();
+  const s = splitLabel(d);
+  if(!s.label) return esc(fmt(d));
+  const r = /[.!?]$/.test(s.rest) ? s.rest : s.rest + '.';
+  return `<em class="dl">${esc(s.label)}</em> ${esc(r)}`;
+}
 const rnd = a => a[Math.floor(Math.random()*a.length)];
 function shuffle(a){ a = a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 /* Treat pronunciation as media playback so it ignores the silent switch (iOS) */
@@ -2643,8 +2673,8 @@ function renderRound(deferBack){
   cur = rnd(pool.length ? pool : DECK);
   last = cur;
   const sense = rnd(cur.senses);
-  const others = shuffle(DECK.filter(e => e.word.toLowerCase() !== cur.word.toLowerCase())).slice(0,2).map(e => ({t: rnd(e.senses).def, ok:false}));
-  options = shuffle([{t: sense.def, ok:true}, ...others]);
+  const others = shuffle(DECK.filter(e => e.word.toLowerCase() !== cur.word.toLowerCase())).slice(0,2).map(e => ({t: plain(rnd(e.senses).def), ok:false}));
+  options = shuffle([{t: plain(sense.def), ok:true}, ...others]);
 
   const reg = cur.reg ? `<span class="reg">${esc(cur.reg)}</span>` : '';
   $('#front').innerHTML =
@@ -2657,8 +2687,8 @@ function renderRound(deferBack){
     const num = cur.numbered && cur.senses.length > 1 ? `<span class="n">${i+1}.</span>` : '';
     const ld = x => x.lead ? `<span class="lead">${esc(x.lead)}</span> — ` : '';
     const ex = x => x.ex ? ` <i>${esc(fmt(x.ex))}</i>` : '';
-    const alts = s.alts.map(a => `<div class="alt">${ld(a)}${esc(fmt(a.def))}${ex(a)}</div>`).join('');
-    return `<li>${num}${ld(s)}${esc(fmt(s.def))}${ex(s)}${alts}</li>`;
+    const alts = s.alts.map(a => `<div class="alt">${ld(a)}${dh(a.def)}${ex(a)}</div>`).join('');
+    return `<li>${num}${ld(s)}${dh(s.def)}${ex(s)}${alts}</li>`;
   }).join('');
   const backHtml =
     `<h2>${esc(cur.word)}<small>${[cur.pron, [cur.pos, cur.reg].filter(Boolean).join(' ')].filter(Boolean).map(esc).join(' · ')}</small></h2>
